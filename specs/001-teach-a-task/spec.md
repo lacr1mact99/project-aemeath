@@ -16,6 +16,16 @@ Người dùng văn phòng lặp lại cùng một chuỗi thao tác trên ứng
 - dùng **model ngôn ngữ do công ty tự host, chỉ nhận văn bản, có thể yếu** (cỡ model nhỏ), cấu hình bằng đúng ba tham số: khoá truy cập, địa chỉ máy chủ, tên model;
 - vì vậy **phần lớn công việc do chương trình làm theo cách tất định**; model chỉ được hỏi những câu trắc nghiệm hẹp khi có sự cố.
 
+## Clarifications
+
+### Session 2026-11-22
+
+- Q: Khi model sửa được một bước, có tự ghi bộ chọn mới vào skill luôn hay chờ người dùng duyệt? → A: Tự vá ngay, skill giữ "sẵn sàng"; cuối lần chạy hiện danh sách các bước đã được vá, người dùng có thể hoàn tác từng bước.
+- Q: Khi nhờ model viết câu ý định cho bước gõ chữ, có gửi kèm nội dung đã gõ không? → A: Không; chỉ gửi "gõ N ký tự vào ô <tên ô>".
+- Q: Giao diện và các câu mô tả tự sinh dùng ngôn ngữ nào? → A: Tiếng Việt và tiếng Anh, đổi trong Cài đặt.
+- Q: Giữ nguyên các giá trị mặc định về thời gian và ngân sách? → A: Giữ nguyên toàn bộ (3 phút / 2 giờ / 30 phút / 5 phút / 30 phút + 20 lần gọi / 2 lần sửa mỗi bước / 30 giây).
+- Q: Log các lần chạy (kèm ảnh) được giữ bao lâu? → A: Giữ 50 lần chạy gần nhất cho mỗi skill, cũ hơn tự xoá; người dùng chỉnh được con số.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Dạy một việc bằng cách làm mẫu (Priority: P1)
@@ -70,7 +80,7 @@ Người dùng mở skill nháp trong màn hình Sửa: xem từng bước với
 1. **Given** một bước gõ văn bản, **When** người dùng chọn một đoạn và đánh dấu là tham số có tên, mô tả, ví dụ, **Then** skill có thêm tham số đầu vào đó và bước dùng giá trị tham số khi chạy.
 2. **Given** người dùng khai báo một bước nhập thông tin bí mật bằng tên khoá, **When** chạy, **Then** giá trị được lấy từ kho bí mật của hệ điều hành và không xuất hiện trong skill, log, ảnh hay bất kỳ câu hỏi nào gửi model.
 3. **Given** skill đang "nháp", **When** một lần chạy thử thành công và người dùng bấm xác nhận, **Then** skill chuyển sang "sẵn sàng".
-4. **Given** skill "sẵn sàng", **When** người dùng sửa các bước, **Then** [mặc định đã chọn] skill quay về "nháp" cho tới khi được chạy thử và xác nhận lại.
+4. **Given** skill "sẵn sàng", **When** người dùng sửa các bước, **Then** skill quay về "nháp" cho tới khi được chạy thử và xác nhận lại.
 5. **Given** người dùng xoá hoặc đổi thứ tự bước, **When** lưu, **Then** skill được lưu với thứ tự mới và vẫn mở/chạy được.
 
 ---
@@ -85,7 +95,7 @@ Khi cách nhận diện đã ghi không tìm thấy (hoặc tìm thấy nhiều)
 
 **Acceptance Scenarios**:
 
-1. **Given** phần tử đích đã đổi mã định danh nhưng vẫn còn trên màn hình, **When** chạy tới bước đó, **Then** model được hỏi chọn trong danh sách ứng viên, phần tử được chọn được thao tác, điều kiện kết quả đạt, và cách nhận diện mới được lưu vào bước.
+1. **Given** phần tử đích đã đổi mã định danh nhưng vẫn còn trên màn hình, **When** chạy tới bước đó, **Then** model được hỏi chọn trong danh sách ứng viên, phần tử được chọn được thao tác, điều kiện kết quả đạt, và cách nhận diện mới được lưu vào bước; skill vẫn "sẵn sàng", và cuối lần chạy người dùng thấy bước này trong danh sách "đã tự vá" kèm nút hoàn tác.
 2. **Given** model trả lời sai định dạng, **When** ứng dụng phân tích câu trả lời, **Then** ứng dụng hỏi lại đúng một lần kèm thông báo lỗi; nếu vẫn sai thì coi như "không có"/"hỏi người dùng".
 3. **Given** model là loại có phần suy nghĩ trước câu trả lời, **When** ứng dụng nhận câu trả lời, **Then** chỉ phần lựa chọn được dùng, phần suy nghĩ và chữ thừa bị bỏ qua.
 4. **Given** một hộp thoại bất ngờ che bước tiếp theo, **When** điều kiện kết quả không đạt, **Then** model được hỏi chẩn đoán, có thể chọn đóng đúng hộp thoại đó, rồi bước được thử lại.
@@ -106,7 +116,7 @@ Trong Cài đặt, người dùng nhập địa chỉ máy chủ, khoá truy c�
 
 1. **Given** ba tham số hợp lệ, **When** bấm Kiểm tra kết nối, **Then** ứng dụng báo thành công; sai tham số thì báo rõ lỗi (không kết nối được / sai khoá / không có model đó).
 2. **Given** kết nối được, **When** bấm Kiểm tra model, **Then** ứng dụng chạy bộ câu hỏi mẫu và báo tỉ lệ đúng cho từng loại câu hỏi (chọn phần tử, chẩn đoán).
-3. **Given** lần đầu cấu hình model, **When** người dùng lưu, **Then** ứng dụng hiển thị và yêu cầu xác nhận thông báo: chỉ văn bản (ý định bước, tiêu đề cửa sổ, tên và vai trò phần tử) được gửi đi; tên phần tử có thể chứa dữ liệu nghiệp vụ; ảnh chụp, bí mật và nội dung bộ nhớ tạm không bao giờ được gửi.
+3. **Given** lần đầu cấu hình model, **When** người dùng lưu, **Then** ứng dụng hiển thị và yêu cầu xác nhận thông báo: chỉ văn bản (ý định bước, tiêu đề cửa sổ, tên và vai trò phần tử) được gửi đi; tên phần tử có thể chứa dữ liệu nghiệp vụ; ảnh chụp, bí mật, nội dung bộ nhớ tạm và nội dung đã gõ không bao giờ được gửi.
 4. **Given** khoá truy cập đã lưu, **When** kiểm tra file cấu hình và log, **Then** không tìm thấy khoá ở đâu ngoài kho bí mật của hệ điều hành.
 
 ---
@@ -166,7 +176,7 @@ Người dùng tạo lịch cho một skill "sẵn sàng": chọn giá trị đ�
 
 - **FR-009**: Hệ thống MUST biến bản ghi thành skill gồm danh sách bước có thứ tự; mỗi bước có: ý định (một câu ngắn), loại hành động (bấm, gõ, phím tắt, cuộn, chờ, mở ứng dụng), cửa sổ đích, danh sách cách nhận diện phần tử theo thứ tự ưu tiên (mã định danh → vai trò + tên → chữ nhận dạng được → vị trí tương đối trên cửa sổ), điều kiện kết quả, cờ cần phê duyệt, điều kiện bỏ qua (tuỳ chọn).
 - **FR-010**: Điều kiện kết quả MUST được suy ra tất định từ mô tả trạng thái dạng văn bản đã ghi (ví dụ: tiêu đề cửa sổ chứa X, phần tử Y tồn tại, giá trị ô bằng Z).
-- **FR-011**: Hệ thống MUST dùng model để viết câu ý định cho từng bước, mỗi lần chỉ đưa bước đó cùng bước liền trước và liền sau; khi model lỗi hoặc chưa cấu hình MUST dùng câu mô tả tất định theo mẫu.
+- **FR-011**: Hệ thống MUST dùng model để viết câu ý định cho từng bước, mỗi lần chỉ đưa bước đó cùng bước liền trước và liền sau; với bước gõ chữ MUST chỉ gửi độ dài và ô đích ("gõ N ký tự vào ô <tên ô>"), không gửi nội dung đã gõ; khi model lỗi hoặc chưa cấu hình MUST dùng câu mô tả tất định theo mẫu.
 - **FR-012**: Skill mới sinh MUST ở trạng thái "nháp" và MUST chạy được mà không cần model.
 - **FR-013**: Skill MUST được lưu dưới dạng file văn bản người đọc được trên máy người dùng, không cần cơ sở dữ liệu.
 
@@ -175,7 +185,7 @@ Người dùng tạo lịch cho một skill "sẵn sàng": chọn giá trị đ�
 - **FR-014**: Người dùng MUST xem được từng bước kèm ảnh trước/sau, ý định, cách nhận diện, điều kiện kết quả; và MUST sửa được ý định, điều kiện kết quả, điều kiện bỏ qua, cờ phê duyệt; xoá và sắp xếp lại bước.
 - **FR-015**: Người dùng MUST đánh dấu được một đoạn văn bản trong bước gõ là tham số đầu vào (tên, mô tả, giá trị ví dụ). Hệ thống MUST NOT tự đoán tham số.
 - **FR-016**: Người dùng MUST khai báo được bước nhập thông tin bí mật bằng tên khoá; giá trị MUST được lấy từ kho bí mật của hệ điều hành lúc chạy và MUST NOT xuất hiện trong skill, log, ảnh hay câu hỏi gửi model.
-- **FR-017**: Skill MUST chuyển từ "nháp" sang "sẵn sàng" chỉ sau một lần chạy thành công được người dùng xác nhận. Sửa các bước của skill "sẵn sàng" MUST đưa nó về "nháp".
+- **FR-017**: Skill MUST chuyển từ "nháp" sang "sẵn sàng" chỉ sau một lần chạy thành công được người dùng xác nhận. Người dùng sửa các bước của skill "sẵn sàng" MUST đưa nó về "nháp"; tự vá (FR-027) và hoàn tác tự vá không tính là sửa.
 
 **Chạy skill**
 
@@ -187,8 +197,8 @@ Người dùng tạo lịch cho một skill "sẵn sàng": chọn giá trị đ�
 - **FR-023**: Mỗi lần chạy MUST có giới hạn tổng thời gian và giới hạn tổng số lần gọi model; vượt giới hạn thì dừng ở trạng thái thất bại.
 - **FR-024**: Khi tạm dừng ở nấc 5, GUI MUST hiện bước đang kẹt (ý định, ảnh, lý do) và cho người dùng làm tay rồi bấm Tiếp tục, hoặc huỷ.
 - **FR-025**: Hệ thống MUST NOT chạy hai skill cùng lúc.
-- **FR-026**: Mỗi lần chạy MUST lưu log trên máy: từng bước, nấc đã dùng, câu hỏi gửi model và câu trả lời, ảnh chụp, kết quả cuối.
-- **FR-027**: Khi sửa chữa bằng model thành công và điều kiện kết quả đạt, hệ thống MUST bổ sung cách nhận diện mới vào bước đó (giữ các cách cũ) và ghi log việc tự vá.
+- **FR-026**: Mỗi lần chạy MUST lưu log trên máy: từng bước, nấc đã dùng, câu hỏi gửi model và câu trả lời, ảnh chụp, kết quả cuối. Hệ thống MUST giữ log (kể cả ảnh) của 50 lần chạy gần nhất cho mỗi skill và tự xoá log cũ hơn; người dùng chỉnh được con số này trong Cài đặt. Việc dọn MUST NOT xoá skill, lịch, lịch sử lịch hay log của lần chạy đang diễn ra.
+- **FR-027**: Khi sửa chữa bằng model thành công và điều kiện kết quả đạt, hệ thống MUST bổ sung cách nhận diện mới vào bước đó (giữ các cách cũ) và ghi log việc tự vá. Tự vá MUST NOT đổi trạng thái skill. Cuối lần chạy, GUI MUST hiện danh sách các bước đã được vá (cách nhận diện mới, lần chạy nào) và cho người dùng hoàn tác từng bước; lần chạy theo lịch thì danh sách này chờ ở lần mở GUI kế tiếp.
 
 **Hợp đồng với model**
 
@@ -197,7 +207,7 @@ Người dùng tạo lịch cho một skill "sẵn sàng": chọn giá trị đ�
 - **FR-030**: Mọi thông tin gửi model MUST là văn bản; ngữ cảnh mỗi lần gọi chỉ gồm bước hiện tại và danh sách ứng viên, dưới khoảng 2.000 token; không gửi lịch sử hay toàn bộ skill.
 - **FR-031**: Hệ thống MUST tự phân tích câu trả lời: bỏ phần suy nghĩ và chữ thừa, lấy lựa chọn đầu tiên, kiểm tra nằm trong tập cho phép; sai thì hỏi lại đúng một lần kèm thông báo lỗi, vẫn sai thì coi là "không có"/"hỏi người dùng". Hệ thống MUST NOT phụ thuộc vào việc máy chủ hỗ trợ đầu ra có cấu trúc, gọi công cụ hay đầu vào ảnh (được phép dùng thêm nếu có, nhưng bước tự phân tích vẫn giữ).
 - **FR-032**: Lời gọi model MUST dùng chế độ trả lời tất định nhất máy chủ cho phép; quá thời gian, lỗi kết nối, lỗi xác thực MUST được xử lý như "hỏi người dùng" và GUI hiện rõ nguyên nhân.
-- **FR-033**: Ảnh chụp, giá trị bí mật và nội dung bộ nhớ tạm MUST NOT được gửi tới máy chủ model.
+- **FR-033**: Ảnh chụp, giá trị bí mật, nội dung bộ nhớ tạm và nội dung văn bản người dùng đã gõ (kể cả giá trị tham số) MUST NOT được gửi tới máy chủ model.
 - **FR-034**: Ứng dụng MUST dùng một model tại một thời điểm, chọn bằng tên model trong Cài đặt.
 
 **Cài đặt**
@@ -206,6 +216,7 @@ Người dùng tạo lịch cho một skill "sẵn sàng": chọn giá trị đ�
 - **FR-036**: Cài đặt MUST có nút Kiểm tra kết nối và nút Kiểm tra model; Kiểm tra model chạy bộ câu hỏi mẫu có đáp án (chọn phần tử, chẩn đoán) không cần giao diện thật và báo tỉ lệ đúng.
 - **FR-037**: Lần cấu hình model đầu tiên, hệ thống MUST hiển thị và yêu cầu người dùng xác nhận thông báo về dữ liệu được gửi đi (FR-030, FR-033) và việc tên phần tử có thể chứa dữ liệu nghiệp vụ.
 - **FR-038**: Người dùng MUST cấu hình được phím tắt (dừng khẩn cấp, tạm dừng/dừng ghi) và thư mục dữ liệu.
+- **FR-048**: Người dùng MUST chọn được ngôn ngữ ứng dụng trong Cài đặt: tiếng Việt hoặc tiếng Anh (mặc định theo ngôn ngữ Windows, không khớp thì tiếng Việt). Lựa chọn áp dụng cho toàn bộ chữ trên giao diện, thông báo Windows, câu ý định tất định và ngôn ngữ yêu cầu model viết câu ý định. Câu ý định đã có trong skill MUST NOT bị dịch lại tự động khi đổi ngôn ngữ.
 
 **Lịch**
 
@@ -246,7 +257,7 @@ Người dùng tạo lịch cho một skill "sẵn sàng": chọn giá trị đ�
 - **SC-006**: Mỗi model công ty đang host trả về câu trả lời phân tích được và hợp lệ ≥ 19/20 lần cho câu hỏi trắc nghiệm mẫu.
 - **SC-007**: Người dùng làm trọn vòng dạy → sửa → chạy → phê duyệt chỉ bằng GUI, không cần mở hay sửa file bằng tay.
 - **SC-008**: Trong mọi phép thử lịch: 100% lần đến giờ đều hiện hộp hỏi (kể cả khi máy rảnh), 0 lần chạy khi chưa được đồng ý; máy khoá thì hỏi sau khi mở khoá; hết thời hạn chờ thì 100% được ghi "bỏ lỡ".
-- **SC-009**: Kiểm tra toàn bộ file cấu hình, log, skill và lưu lượng gửi tới máy chủ model: 0 lần xuất hiện khoá truy cập, giá trị bí mật, ảnh chụp hay nội dung bộ nhớ tạm.
+- **SC-009**: Kiểm tra toàn bộ file cấu hình, log, skill và lưu lượng gửi tới máy chủ model: 0 lần xuất hiện khoá truy cập, giá trị bí mật, ảnh chụp hay nội dung bộ nhớ tạm; lưu lượng gửi tới máy chủ model không chứa nội dung văn bản người dùng đã gõ.
 - **SC-010**: Khi mất kết nối máy chủ model, skill có giao diện không đổi vẫn chạy xong như bình thường; bước cần sửa chữa chuyển sang hỏi người dùng với nguyên nhân hiển thị rõ.
 
 ## Assumptions
@@ -255,9 +266,10 @@ Người dùng tạo lịch cho một skill "sẵn sàng": chọn giá trị đ�
 - **Ứng dụng đích**: đa số ứng dụng desktop cung cấp thông tin phần tử qua cơ chế trợ năng của hệ điều hành; ứng dụng không có thì dùng nhận dạng chữ trên màn hình làm dự phòng. Chất lượng nhận dạng chữ tiếng Việt cần được đo trước khi xây dựng.
 - **Máy chủ model**: giả định dùng giao thức chat completions tương thích OpenAI; khả năng đầu ra có cấu trúc, giới hạn ngữ cảnh, tốc độ, hạn mức, việc có trả phần suy nghĩ hay không — với cả DeepSeek và GLM — là ẩn số được trả lời bằng phép đo ở bước thử nghiệm kỹ thuật đầu tiên (M0), không cần hỏi thêm. Model mặc định được chọn theo kết quả đo SC-004.
 - **Mạng**: máy chủ model nằm trong mạng nội bộ công ty (có thể cần VPN); rủi ro gửi văn bản giao diện tới đó thấp hơn dịch vụ bên ngoài nhưng vẫn phải thông báo cho người dùng.
+- **Ngôn ngữ**: giao diện có tiếng Việt và tiếng Anh (FR-048); ngôn ngữ của prompt gửi model (khác với ngôn ngữ câu ý định model trả về) do plan chọn theo kết quả đo.
 - **Người dùng**: một người dùng trên một máy; skill và lịch là của riêng người đó; không có phân quyền.
-- **Lưu trữ**: toàn bộ dữ liệu là file trong thư mục dữ liệu của người dùng (mặc định thư mục ứng dụng trong hồ sơ người dùng); log lần chạy giữ vô thời hạn cho tới khi người dùng xoá [mặc định đã chọn].
-- **Giá trị mặc định đã chọn** (người dùng chỉnh được, xác nhận lại ở giai đoạn plan):
+- **Lưu trữ**: toàn bộ dữ liệu là file trong thư mục dữ liệu của người dùng (mặc định thư mục ứng dụng trong hồ sơ người dùng); log lần chạy giữ 50 lần gần nhất mỗi skill (FR-026).
+- **Giá trị mặc định đã chốt** (người dùng chỉnh được; M0 có thể đề xuất sửa nếu đo thấy không hợp, đặc biệt thời gian chờ gọi model với model suy luận):
   - "Đang dùng máy" = có thao tác chuột/phím trong 3 phút gần nhất.
   - Thời hạn chờ của lịch mặc định: 2 giờ; thời hạn chờ phê duyệt/kẹt khi chạy theo lịch: 30 phút; thời hạn hỏi khi người dùng đang dùng máy: 5 phút.
   - Ngân sách mỗi lần chạy: tổng 30 phút, tổng 20 lần gọi model; ngân sách sửa chữa mỗi bước: 2 lần.
