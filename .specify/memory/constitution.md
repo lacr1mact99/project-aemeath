@@ -1,5 +1,17 @@
 <!--
-Sync Impact Report
+Sync Impact Report (2026-11-23)
+- Version change: 1.0.0 → 1.1.0 (MINOR: mở rộng hướng dẫn, không bỏ/định nghĩa lại nguyên tắc)
+- Modified principles:
+  VII. Đơn giản, đúng phạm vi — bỏ cấm "stack web" chung chung; ghi Tauri là công nghệ giao diện đã chốt,
+       cấm stack web khác, frontend không tải tài nguyên mạng
+- Expanded sections: "Ràng buộc nền tảng và giao tiếp model" — kiến trúc hai lớp lõi/giao diện; ranh giới
+  lõi ⇄ giao diện là ranh giới tin cậy (IV, V thực thi trong lõi; webview không có quyền file/shell/mạng)
+- Removed sections: none
+- Dependent artifacts: specs/002-tauri-gui/spec.md (Assumptions "Constitution" đã được giải quyết);
+  plan 002 dùng Nguyên tắc VII bản mới, không cần Complexity Tracking cho Tauri
+- Deferred TODOs: none
+
+Sync Impact Report (2026-11-22)
 - Version change: (template, chưa có) → 1.0.0
 - Modified principles: thay toàn bộ placeholder bằng 7 nguyên tắc:
   I. Tất định trước, model chỉ sửa chữa
@@ -93,8 +105,12 @@ Lý do: không đo thì không biết harness có chặt thật hay không.
 
 ### VII. Đơn giản, đúng phạm vi
 
-- Một binary, dữ liệu là file văn bản người đọc được trong thư mục dữ liệu người dùng; MUST NOT
-  thêm cơ sở dữ liệu, dịch vụ nền riêng hay stack web khi chưa có nhu cầu thật.
+- Một binary phát hành, dữ liệu là file văn bản người đọc được trong thư mục dữ liệu người dùng; MUST
+  NOT thêm cơ sở dữ liệu hay dịch vụ nền riêng khi chưa có nhu cầu thật.
+- Giao diện người dùng dùng **Tauri** (đã chốt, spec 002): frontend web nhúng chạy trong cùng binary, chỉ
+  nói chuyện với lõi Rust qua bề mặt điều khiển. Ngoài giao diện Tauri, MUST NOT thêm stack web khác (máy
+  chủ web, giao diện từ xa, framework web thứ hai). Frontend MUST giữ gọn: không tải tài nguyên từ mạng,
+  phụ thuộc frontend phải có lý do trong plan như phụ thuộc Rust.
 - Một model tại một thời điểm; không định tuyến giữa các model.
 - Những thứ ngoài phạm vi (macOS/Linux, đầu vào ảnh, model nhúng, nhánh rẽ/vòng lặp phức tạp, kích
   hoạt theo sự kiện, chia sẻ skill, ghi video/âm) MUST NOT được xây "để sẵn"; thêm khi có nhu cầu
@@ -108,6 +124,12 @@ Lý do: mỗi lớp phức tạp thêm là một chỗ có thể hỏng trên m�
 
 - Nền tảng: Windows 10/11; ngôn ngữ triển khai Rust; nhận diện phần tử qua UI Automation, OCR có
   sẵn của Windows làm dự phòng.
+- Kiến trúc hai lớp: **lõi** (thư viện Rust + CLI, spec 001) chứa mọi quy tắc, an toàn, riêng tư;
+  **giao diện Tauri** (spec 002) chỉ hiển thị và chuyển lựa chọn của người dùng. Mọi quy tắc của Nguyên tắc
+  IV và V MUST được thực thi trong lõi, không dựa vào giao diện; lõi MUST kiểm chứng được không cần giao diện.
+- Ranh giới lõi ⇄ giao diện là ranh giới tin cậy: lõi MUST coi mọi lệnh từ giao diện là đầu vào cần kiểm tra;
+  không có lệnh nào trả ra API key, giá trị bí mật hay nội dung đã gõ; webview MUST NOT có quyền truy cập file,
+  shell hay mạng ngoài các lệnh lõi đã khai báo.
 - Model: chỉ cấu hình bằng ba tham số (base URL, API key, tên model); giao thức giả định là chat
   completions tương thích OpenAI. Toàn bộ giao tiếp HTTP với model MUST nằm sau một hàm/mô-đun duy
   nhất để thay giao thức chỉ phải sửa một chỗ.
@@ -142,4 +164,4 @@ Lý do: mỗi lớp phức tạp thêm là một chỗ có thể hỏng trên m�
 - Tuân thủ: mỗi plan và mỗi review MUST xác nhận tuân thủ; độ phức tạp vượt Nguyên tắc VII MUST được
   biện minh trong bảng Complexity Tracking của plan.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-22 | **Last Amended**: 2026-11-22
+**Version**: 1.1.0 | **Ratified**: 2026-11-22 | **Last Amended**: 2026-11-23
