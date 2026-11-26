@@ -150,7 +150,7 @@ running → succeeded | failed(reason) | cancelled
 ```
 
 `failed.reason` ∈ {`time_budget`, `model_budget`, `approval_timeout`, `stuck_timeout`,
-`rejected`, `launch_failed`}. Lần chạy `trial` thành công mở hộp "Xác nhận skill này chạy đúng?".
+`rejected`, `launch_failed`, `no_responder`} (`no_responder`: yêu cầu người dùng không thể được trả lời — FR-050). Lần chạy `trial` thành công mở hộp "Xác nhận skill này chạy đúng?".
 
 **Giữ log** (FR-026): sau mỗi lần chạy kết thúc, giữ `keep_runs_per_skill` (mặc định 50) thư mục mới
 nhất trong `runs\<skill>\`, xoá phần còn lại; không đụng run đang `running`/`paused`.
@@ -197,16 +197,22 @@ lần mới (không chồng hộp hỏi).
 | budget.max_minutes / max_model_calls / max_repairs_per_step | 30 / 20 / 2 |
 | schedule.idle_minutes / ask_timeout_minutes / approval_timeout_minutes | 3 / 5 / 30 |
 | keep_runs_per_skill | 50 |
-| start_with_windows | false |
+| start_with_windows | false (lõi chỉ lưu giá trị; việc đăng ký khởi động cùng Windows thuộc spec 002) |
 
 ### Offline eval case (câu hỏi mẫu)
 
 | Trường | Kiểu |
 |---|---|
 | id | chuỗi |
-| kind | `pick_element` \| `diagnose` |
+| kind | `pick_element` \| `diagnose` \| `label_step` |
 | input | đúng nội dung phần "user" sẽ gửi model (contracts/model-protocol.md) |
-| expected | câu trả lời đúng, ví dụ `{"choice": 3}` |
+| expected | câu trả lời đúng, ví dụ `{"choice": 3}`; với `label_step` là quy tắc chấm `{"language": "vi", "must_contain": ["File name:"], "must_not_contain": ["BaoCao-2026"]}` (luôn kèm: phân tích được, một dòng, 1–120 ký tự) |
 
 Bộ mặc định nhúng trong binary; người dùng/nhóm phát triển có thể thêm file `eval\*.jsonl` trong thư mục
 dữ liệu. Kết quả: tỉ lệ đúng theo từng `kind` và tổng (SC-004 ≥ 90%).
+
+**Kết quả có dấu vân tay** (`eval\results\<thời điểm>.json` trong thư mục dữ liệu; bản dùng cho phát hành sao vào
+`crates/teach-core/assets/eval/last_result.json`): `{fingerprint, model_name, prompt_version, scores: {pick_element,
+diagnose, label_step, total}, cases, at}`. `fingerprint` = FNV-1a 64-bit (tự viết, không thêm crate) trên nội dung
+`assets/prompts/*`, `src/model.rs` và `src/runner/resolve.rs` (chuẩn hoá xuống dòng LF). Kết quả chỉ chứa tên
+model, điểm và id ca — không chứa câu hỏi, câu trả lời hay địa chỉ máy chủ.

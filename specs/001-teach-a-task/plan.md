@@ -38,7 +38,7 @@ Per-Monitor-V2 DPI aware.
 
 **Project Type**: thư viện lõi + CLI (giao diện desktop ở spec 002)
 
-**Performance Goals**: dừng khẩn cấp ≤ 1 s (SC-003); một bước ở nấc 1 ≤ 2 s gồm chờ giao diện ổn định;
+**Performance Goals**: dừng khẩn cấp ≤ 1 s (SC-003); một bước ở nấc 1 ≤ 2 s gồm chờ giao diện ổn định ("ổn định" = cây phần tử của cửa sổ đích và tiêu đề không đổi trong 300 ms liên tiếp, chờ tối đa 5 s rồi vẫn kiểm tra `expect`);
 ghi không làm trễ thao tác người dùng (hook trả ≤ 1 ms); mỗi lần gọi model ≤ 30 s (timeout); sự kiện trạng
 thái phát ra ≤ 100 ms sau thay đổi (để giao diện 002 đạt ≤ 1 s).
 
@@ -62,11 +62,11 @@ log giữ 50 lần chạy/skill; thông điệp lõi 2 ngôn ngữ.
 | Nguyên tắc | Cách thiết kế đáp ứng | Trước P0 | Sau P1 |
 |---|---|---|---|
 | I. Tất định trước | Bậc thang nấc 0→5, nấc 1 không gọi model; compiler sinh selector + `expect` bằng code; nhãn tất định khi thiếu model; `run --no-model` + bench chế độ 1 kiểm chứng 0 lần gọi | ✅ | ✅ |
-| II. Trắc nghiệm, chỉ văn bản | 3 loại câu hỏi cố định ([model-protocol](./contracts/model-protocol.md)); bộ phân tích tự viết, hỏi lại 1 lần; không `tools`/ảnh; `json_schema` chỉ là tuỳ chọn bật thêm | ✅ | ✅ |
+| II. Trắc nghiệm, chỉ văn bản | 3 loại câu hỏi cố định ([model-protocol](./contracts/model-protocol.md)), cả 3 có trong bộ câu hỏi mẫu (`label_step` chấm theo quy tắc); bộ phân tích tự viết, hỏi lại 1 lần; không `tools`/ảnh; `json_schema` chỉ là tuỳ chọn bật thêm | ✅ | ✅ |
 | III. Kiểm tra bằng code | `expect` là danh sách Condition tất định; lựa chọn của model luôn qua `expect`; tự vá chỉ khi `expect` đạt | ✅ | ✅ |
 | IV. Con người nắm quyền | Cờ dừng khẩn cấp trong luồng hook của lõi (không phụ thuộc giao diện, R-8); input không mang `TEACH_MAGIC` → tạm dừng (R-2); `approval`; ngân sách; máy trạng thái lịch không có cạnh `due → running` không qua lựa chọn Chạy ngay (data-model); bề mặt điều khiển không có lệnh "tự đồng ý" ([control-surface](./contracts/control-surface.md)) | ✅ | ✅ |
 | V. Riêng tư & bí mật | `is_password` + mặc định coi là bí mật khi không xác định (R-4); che ảnh; bí mật chỉ đọc từ Credential Manager ngay trước khi gõ; bộ lọc dữ liệu gửi model có test (SC-009); API key và bí mật chỉ ghi, không có lệnh đọc ra qua bề mặt điều khiển | ✅ | ✅ |
-| VI. Đo được mới tính | M0 spike ([quickstart §M0](./quickstart.md#m0)) trước khi xây; `bench`/`eval`/`probe-model` là lệnh CLI có mã thoát theo ngưỡng; thứ tự M2 trước M3 | ✅ | ✅ |
+| VI. Đo được mới tính | M0 spike ([quickstart §M0](./quickstart.md#m0)) trước khi xây; `bench`/`eval`/`probe-model` là lệnh CLI có mã thoát theo ngưỡng; thứ tự M2 trước M3; cổng dấu vân tay: test `eval_gate` fail khi prompt/bộ lọc/bộ phân tích đổi mà chưa có kết quả `eval` ≥ 90% trùng dấu vân tay (kết quả tạo trên máy công ty) | ✅ | ✅ |
 | VII. Đơn giản | Một crate lõi (thư viện + CLI), không tokio, không DB; bỏ `terminator` (dep nặng), `enigo`, `global-hotkey` (phím tắt qua hook có sẵn); i18n tự viết 2 bảng | ✅ | ✅ |
 | Ràng buộc: một mô-đun model | Toàn bộ HTTP + prompt + phân tích ở `crates/teach-core/src/model.rs` | ✅ | ✅ |
 
@@ -107,6 +107,7 @@ Cargo.toml                       # workspace; plan 002 thêm thành viên app Ta
 crates/teach-core/
 ├── Cargo.toml                   # lib "teach_core" + bin "teach" (CLI)
 ├── build.rs                     # manifest cho bin CLI (PerMonitorV2, asInvoker)
+├── examples/                    # spike M0 (spike_record, spike_input, spike_ocr, spike_capture, spike_hotkeys, spike_secret, spike_probe)
 ├── assets/
 │   ├── prompts/                 # system prompt + ví dụ mẫu: pick_element, diagnose, label_step
 │   └── eval/default.jsonl       # bộ câu hỏi mẫu nhúng trong binary
@@ -143,7 +144,12 @@ crates/teach-core/
     ├── skill_format.rs          # quy tắc hợp lệ, round-trip YAML
     ├── runner_ladder.rs         # bậc thang với UIA giả + model giả
     ├── scheduler.rs             # máy trạng thái lịch, khoá máy, bỏ lỡ, DST, không chạy khi chưa đồng ý
-    ├── engine.rs                # lệnh → sự kiện, yêu cầu người dùng chỉ nhận lựa chọn hợp lệ
+    ├── engine.rs                # lệnh → sự kiện, yêu cầu người dùng chỉ nhận lựa chọn hợp lệ, độ trễ sự kiện
+    ├── store.rs                 # từ chối thư mục mạng/đồng bộ, ghi nguyên tử
+    ├── skill_lifecycle.rs       # draft ⇄ ready, tự vá không đổi trạng thái
+    ├── runner_repair.rs         # nấc 2/4, tự vá, cấm sửa chữa khi expect rỗng
+    ├── eval.rs                  # chấm bộ câu hỏi mẫu (3 loại), thông báo dữ liệu
+    ├── eval_gate.rs             # dấu vân tay hiện tại phải có kết quả ≥ 90% trong assets/eval/last_result.json
     └── fixtures/
 bench/skills/                    # 10 skill chuẩn (Notepad, Explorer, Calculator, Settings, trình duyệt, Office…)
 ```

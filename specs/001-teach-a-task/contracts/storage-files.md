@@ -68,9 +68,13 @@ Dòng đầu là header, sau đó mỗi sự kiện một dòng, dòng cuối l�
 ```json
 {"id":"pick-001","kind":"pick_element","input":"STEP: ...\nCANDIDATES:\n1. ...","expected":{"choice":3}}
 {"id":"diag-004","kind":"diagnose","input":"STEP: ...","expected":{"action":"dismiss","choice":4}}
+{"id":"label-002","kind":"label_step","input":"GOAL: ...\nTHIS: type 19 characters into Edit \"File name:\" in \"Save As\"\nLANGUAGE: vi","expected":{"language":"vi","must_contain":["File name:"],"must_not_contain":[]}}
 ```
 
-Chấm: câu trả lời sau bước phân tích bằng `expected` (so sánh JSON) → đúng.
+Chấm: `pick_element`/`diagnose` — câu trả lời sau bước phân tích bằng `expected` (so sánh JSON) → đúng;
+`label_step` — đạt mọi quy tắc trong `expected` cộng các quy tắc luôn áp dụng (data-model §Offline eval case).
+`teach eval` ghi kết quả có dấu vân tay (data-model) vào `eval\results\`; `--publish` sao kết quả ≥ 90% vào
+`crates/teach-core/assets/eval/last_result.json`.
 
 ## Dòng lệnh của `teach`
 

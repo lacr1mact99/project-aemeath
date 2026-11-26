@@ -15,6 +15,8 @@ Content-Type: application/json
                {"role":"user","content": <đầu vào câu hỏi>} ]}
 ```
 
+- `base_url` MUST là `https://` (trừ `127.0.0.1`/`localhost`); chứng chỉ luôn được kiểm tra theo kho chứng chỉ
+  Windows, không có cờ tắt (FR-035).
 - Không gửi `tools`, ảnh, hay `response_format` trừ khi M0 xác nhận hỗ trợ `json_schema`; khi đó bật
   thêm qua cài đặt ẩn `model.use_json_schema`, nhưng bước phân tích dưới đây vẫn chạy.
 - `max_tokens`: không gửi mặc định (model suy luận cần chỗ cho phần suy nghĩ); M0 quyết có đặt hay không.
@@ -101,6 +103,7 @@ Answer with one line of JSON: {"intent": "<short sentence>"}
 ```
 
 - Giá trị cho phép: chuỗi một dòng, 1–120 ký tự.
+- Có trong bộ câu hỏi mẫu (Constitution II): chấm theo quy tắc ở data-model §Offline eval case.
 - Lỗi → nhãn tất định theo ngôn ngữ cài đặt: `Bấm "Lưu" (Button)` / `Click "Save" (Button)`,
   `Gõ vào ô "File name:"` / `Type into "File name:"`, `Nhấn Ctrl+S` / `Press Ctrl+S`.
 

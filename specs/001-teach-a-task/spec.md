@@ -36,6 +36,10 @@ Người dùng văn phòng lặp lại cùng một chuỗi thao tác trên ứng
 - Q: Bước không có điều kiện kết quả mà không tìm thấy phần tử thì có được nhờ model chọn thay (và tự vá) không? → A: Không; cấm cả chọn phần tử bằng model lẫn chẩn đoán ở bước đó, chuyển thẳng sang hỏi người dùng; bước được gắn cảnh báo "không kiểm chứng được" từ lúc biên dịch.
 - Q: Khi chẩn đoán chọn "thử lại", có được lặp lại hành động có thể gây hậu quả nếu làm hai lần không? → A: Không ở bước có cờ phê duyệt: `retry` ở đó được coi là "hỏi người dùng"; bước khác được thử lại trong ngân sách sửa chữa.
 - Q: Ảnh chụp (lúc ghi và lúc chạy) chụp phạm vi nào? → A: Chỉ vùng cửa sổ đích và các cửa sổ/hộp thoại cùng tiến trình đang hiện; phần có cửa sổ của tiến trình khác chồng lên được tô kín.
+- Q: (analyze) Kết nối tới máy chủ model có bắt buộc mã hoá không? → A: Bắt buộc `https://` (trừ 127.0.0.1/localhost), luôn kiểm tra chứng chỉ, không có tuỳ chọn tắt.
+- Q: (analyze) SC-001 đo thế nào khi bước được phép không có điều kiện kết quả? → A: Mỗi bước có điều kiện hoặc cảnh báo "không kiểm chứng được"; ≥ 80% bước có điều kiện tự sinh.
+- Q: (analyze) Làm sao bắt buộc chạy lại bộ câu hỏi mẫu khi đổi prompt/bộ lọc/bộ phân tích? → A: Kết quả Kiểm tra model ghi dấu vân tay của các thành phần đó; test tự động fail nếu dấu vân tay hiện tại không có kết quả ≥ 90%.
+- Q: (analyze) `label_step` có vào bộ câu hỏi mẫu không? → A: Có, ≥ 10 ca, chấm theo quy tắc (phân tích được, một dòng 1–120 ký tự, đúng ngôn ngữ, chứa tên phần tử đích, không chứa chuỗi bị cấm).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -164,12 +168,12 @@ Người dùng tạo lịch cho một skill "sẵn sàng": chọn giá trị đ�
 - Ngắt ghi bằng Tạm dừng: các thao tác trong lúc tạm dừng không được ghi.
 - Model trả về số thứ tự ngoài danh sách hoặc giá trị ngoài các lựa chọn cho phép: coi là sai định dạng (hỏi lại một lần rồi chuyển sang hỏi người dùng).
 - Bí mật được tham chiếu nhưng không có trong kho bí mật: lần chạy dừng trước bước đó và yêu cầu người dùng bổ sung, không gửi gì ra ngoài.
-- Máy đã đăng xuất (không chỉ khoá) lúc đến giờ: ứng dụng không chạy được; lần đó ghi là bỏ lỡ khi hết thời hạn (giao diện 002 nói rõ giới hạn này).
+- Máy đã đăng xuất (không chỉ khoá) hoặc ứng dụng không chạy lúc đến giờ: không có gì được chạy. Khi ứng dụng khởi động lại, mỗi lịch xét lần đến hạn gần nhất đã qua: còn trong thời hạn chờ → hỏi như bình thường; đã quá thời hạn → ghi "bỏ lỡ"; các lần cũ hơn chỉ ghi "bỏ lỡ", không bao giờ chạy bù hàng loạt (giao diện 002 nói rõ giới hạn này).
 - Mất mạng công ty / ngoài VPN: skill có giao diện không đổi vẫn chạy bình thường; bước cần sửa chữa chuyển thẳng sang hỏi người dùng.
 - Ứng dụng tự thoát hoặc máy khởi động lại giữa lần chạy: lần chạy được ghi là bị gián đoạn khi ứng dụng mở lại, không tự chạy tiếp.
 - Một cửa sổ khác (thông báo, chat, hộp thoại của ứng dụng khác) cướp focus giữa bước: không thao tác nào được gửi vào cửa sổ đó (FR-049); bước nhập bí mật thì tạm dừng hỏi người dùng.
-- Máy bị khoá hoặc UAC hiện lên giữa lần chạy: lần chạy tạm dừng ngay (FR-022); hết hạn chót thì huỷ theo FR-050.
-- Lần chạy từ dòng lệnh trong script không có người trả lời gặp bước phê duyệt: bị từ chối, lần chạy thất bại (FR-050).
+- Máy bị khoá hoặc UAC hiện lên giữa lần chạy: lần chạy tạm dừng ngay (FR-022); hết hạn chót thì thất bại theo FR-050.
+- Lần chạy từ dòng lệnh trong script không có người trả lời gặp bước phê duyệt: lần chạy thất bại với lý do `no_responder` (FR-050).
 
 ## Requirements *(mandatory)*
 
@@ -196,7 +200,7 @@ Người dùng tạo lịch cho một skill "sẵn sàng": chọn giá trị đ�
 
 **Hoàn thiện skill**
 
-- **FR-014**: Hệ thống MUST cho sửa ý định, điều kiện kết quả, điều kiện bỏ qua, cờ phê duyệt, xoá và sắp xếp lại bước, và MUST kiểm tra hợp lệ toàn bộ skill trước khi lưu (không lưu skill không hợp lệ, trả về lỗi theo từng trường). Màn hình Sửa → 002 (UI-040).
+- **FR-014**: Hệ thống MUST cho sửa ý định, điều kiện kết quả, điều kiện bỏ qua, cờ phê duyệt, xoá và sắp xếp lại bước, và MUST kiểm tra hợp lệ toàn bộ skill trước khi lưu (không lưu skill không hợp lệ, trả về lỗi theo từng trường). Xoá skill MUST xoá cả ảnh, log lần chạy và lịch của skill đó; bí mật trong kho của hệ điều hành được giữ lại (có thể dùng chung giữa các skill) và người dùng xoá riêng. Màn hình Sửa → 002 (UI-040).
 - **FR-015**: Người dùng MUST đánh dấu được một đoạn văn bản trong bước gõ là tham số đầu vào (tên, mô tả, giá trị ví dụ). Hệ thống MUST NOT tự đoán tham số.
 - **FR-016**: Người dùng MUST khai báo được bước nhập thông tin bí mật bằng tên khoá; giá trị MUST được lấy từ kho bí mật của hệ điều hành lúc chạy và MUST NOT xuất hiện trong skill, log, ảnh hay câu hỏi gửi model.
 - **FR-017**: Skill MUST chuyển từ "nháp" sang "sẵn sàng" chỉ sau một lần chạy thành công được người dùng xác nhận. Người dùng sửa các bước của skill "sẵn sàng" MUST đưa nó về "nháp"; tự vá (FR-027) và hoàn tác tự vá không tính là sửa.
@@ -209,7 +213,7 @@ Người dùng tạo lịch cho một skill "sẵn sàng": chọn giá trị đ�
 - **FR-021**: Bước có cờ cần phê duyệt MUST luôn dừng chờ người dùng bấm Đồng ý hoặc Từ chối, kể cả khi chạy theo lịch. Không có chế độ tự phê duyệt.
 - **FR-022**: Phím tắt dừng khẩn cấp MUST luôn hoạt động và dừng mọi thao tác tự động trong vòng 1 giây; khi dừng, mọi phím và nút chuột do hệ thống đang giữ MUST được nhả và không còn thao tác nào xếp hàng. Thao tác chuột/phím của người dùng trong lúc chạy MUST làm lần chạy tạm dừng. Phiên Windows bị khoá hoặc màn hình bảo mật (UAC) xuất hiện giữa lần chạy MUST làm lần chạy tạm dừng ngay, không gửi thêm thao tác nào.
 - **FR-049**: Ngay trước **mỗi** lần gửi chuột/phím (không chỉ đầu bước), hệ thống MUST kiểm tra lại cửa sổ đang focus vẫn khớp cửa sổ đích của bước; với bước nhập bí mật, MUST kiểm tra thêm phần tử đang focus chính là phần tử đích. Không khớp → không gửi, xử lý như bước chưa đạt (đi tiếp bậc thang); với bước nhập bí mật → tạm dừng hỏi người dùng, không bao giờ gửi bí mật vào cửa sổ khác. (Constitution IV, V)
-- **FR-050**: Khi một yêu cầu người dùng (phê duyệt, kẹt, chạm, thiếu bí mật, hỏi lịch) không thể được trả lời — chạy dòng lệnh không có người tương tác, đầu vào bị đóng, hay hết hạn chót — hệ thống MUST xử lý theo hướng an toàn: phê duyệt → từ chối, kẹt/chạm/thiếu bí mật → huỷ lần chạy, hỏi lịch → không chạy; không bao giờ coi là đồng ý. (Constitution IV)
+- **FR-050**: Khi một yêu cầu người dùng (phê duyệt, kẹt, chạm, thiếu bí mật, hỏi lịch) không thể được trả lời — chạy dòng lệnh không có người tương tác, đầu vào bị đóng, hay hết hạn chót — hệ thống MUST xử lý theo hướng an toàn: lần chạy kết thúc ở trạng thái thất bại với lý do `no_responder` (không có người trả lời được) hoặc `approval_timeout` / `stuck_timeout` (hết hạn chót); yêu cầu hỏi lịch → không chạy (hỏi lại hoặc bỏ lỡ theo FR-042/FR-043); không bao giờ coi là đồng ý. (Constitution IV)
 - **FR-023**: Mỗi lần chạy MUST có giới hạn tổng thời gian và giới hạn tổng số lần gọi model; vượt giới hạn thì dừng ở trạng thái thất bại.
 - **FR-024**: Khi tạm dừng (ở nấc 5, chờ phê duyệt, do người dùng chạm, hoặc thiếu bí mật), hệ thống MUST phát một **yêu cầu người dùng** gồm lý do, bước (ý định, ảnh lúc ghi, ảnh hiện tại) và các lựa chọn hợp lệ, và chỉ đi tiếp khi nhận một lựa chọn hợp lệ (Tiếp tục / Huỷ / Đồng ý / Từ chối). Cách hiển thị → 002 (UI-032).
 - **FR-025**: Hệ thống MUST NOT chạy hai skill cùng lúc.
@@ -228,9 +232,9 @@ Người dùng tạo lịch cho một skill "sẵn sàng": chọn giá trị đ�
 
 **Cài đặt**
 
-- **FR-035**: Người dùng MUST cấu hình model bằng đúng ba tham số: địa chỉ máy chủ, khoá truy cập, tên model. Khoá truy cập MUST chỉ lưu trong kho bí mật của hệ điều hành, không trong file cấu hình hay log.
-- **FR-036**: Hệ thống MUST có chức năng Kiểm tra kết nối và Kiểm tra model; Kiểm tra model chạy bộ câu hỏi mẫu có đáp án (chọn phần tử, chẩn đoán) không cần giao diện ứng dụng đích và báo tỉ lệ đúng theo loại và tổng.
-- **FR-037**: Hệ thống MUST NOT gọi model khi người dùng chưa xác nhận thông báo về dữ liệu được gửi đi (FR-030, FR-033) và việc tên phần tử có thể chứa dữ liệu nghiệp vụ; nội dung thông báo do lõi cung cấp, cách hiển thị → 002 (UI-051).
+- **FR-035**: Người dùng MUST cấu hình model bằng đúng ba tham số: địa chỉ máy chủ, khoá truy cập, tên model. Địa chỉ máy chủ MUST dùng kết nối mã hoá (`https://`), trừ địa chỉ vòng lặp cục bộ (`127.0.0.1`, `localhost`) dùng cho kiểm thử; chứng chỉ máy chủ MUST luôn được kiểm tra theo kho chứng chỉ của hệ điều hành (nhận CA nội bộ do IT cài) và không có tuỳ chọn tắt kiểm tra. Khoá truy cập MUST chỉ lưu trong kho bí mật của hệ điều hành, không trong file cấu hình hay log.
+- **FR-036**: Hệ thống MUST có chức năng Kiểm tra kết nối và Kiểm tra model; Kiểm tra model chạy bộ câu hỏi mẫu có đáp án cho **cả ba** loại câu hỏi (chọn phần tử, chẩn đoán, viết ý định — loại cuối chấm theo quy tắc: phân tích được, một dòng 1–120 ký tự, đúng ngôn ngữ yêu cầu, chứa tên phần tử đích, không chứa chuỗi bị cấm) không cần giao diện ứng dụng đích và báo tỉ lệ đúng theo loại và tổng. Mỗi kết quả Kiểm tra model MUST ghi kèm dấu vân tay của các thành phần quyết định câu hỏi và cách đọc câu trả lời (prompt, bộ lọc ứng viên, bộ phân tích); bản phát hành chỉ hợp lệ khi có kết quả ≥ 90% trùng dấu vân tay hiện tại (Constitution VI).
+- **FR-037**: Hệ thống MUST NOT gọi model khi người dùng chưa xác nhận thông báo về dữ liệu được gửi đi (FR-030, FR-033) và việc tên phần tử có thể chứa dữ liệu nghiệp vụ; nội dung thông báo do lõi cung cấp, cách hiển thị → 002 (UI-051). Đổi địa chỉ máy chủ hoặc tên model MUST đặt lại trạng thái đã xác nhận, phải xác nhận lại trước lần gọi kế tiếp.
 - **FR-038**: Người dùng MUST cấu hình được phím tắt (dừng khẩn cấp, tạm dừng/dừng ghi) và thư mục dữ liệu. Khi đổi thư mục dữ liệu, hệ thống MUST từ chối ổ mạng/đường dẫn UNC, ổ ánh xạ mạng và thư mục nằm trong vùng đồng bộ đám mây đã biết (ví dụ thư mục OneDrive, thư mục cá nhân được chuyển hướng lên máy chủ), kèm lý do; chỉ chấp nhận thư mục trên ổ cục bộ.
 - **FR-048**: Người dùng MUST chọn được ngôn ngữ ứng dụng trong Cài đặt: tiếng Việt hoặc tiếng Anh (mặc định theo ngôn ngữ Windows, không khớp thì tiếng Việt). Ở lõi, lựa chọn áp dụng cho câu ý định tất định, ngôn ngữ yêu cầu model viết câu ý định, và các thông điệp lõi trả về (lỗi, lý do tạm dừng); chữ trên giao diện và thông báo Windows → 002 (UI-004). Câu ý định đã có trong skill MUST NOT bị dịch lại tự động khi đổi ngôn ngữ.
 
@@ -265,7 +269,7 @@ Người dùng tạo lịch cho một skill "sẵn sàng": chọn giá trị đ�
 
 ### Measurable Outcomes
 
-- **SC-001**: Ghi một workflow 5 bước cho ra skill nháp có đủ 5 bước, mỗi bước có ý định, ít nhất một cách nhận diện và một điều kiện kết quả; 0 ký tự gõ vào ô mật khẩu xuất hiện trong bản ghi.
+- **SC-001**: Ghi một workflow 5 bước cho ra skill nháp có đủ 5 bước, mỗi bước có ý định, ít nhất một cách nhận diện, và hoặc ít nhất một điều kiện kết quả hoặc cảnh báo "không kiểm chứng được" (FR-020); trên bộ workflow chuẩn, ≥ 80% số bước có điều kiện kết quả do hệ thống tự sinh; 0 ký tự gõ vào ô mật khẩu xuất hiện trong bản ghi.
 - **SC-002**: Trên bộ 10 skill chuẩn (Notepad, trình quản lý file, máy tính, Cài đặt Windows, một trình duyệt, một ứng dụng văn phòng hoặc tương đương) với giao diện không đổi và model tắt hẳn: 10/10 skill chạy xong, 0 lần gọi model.
 - **SC-003**: Dừng khẩn cấp làm ngừng mọi thao tác tự động trong vòng 1 giây, 100% số lần thử.
 - **SC-004**: Với model được chọn làm mặc định: Kiểm tra model đạt ≥ 90% đúng trên bộ câu hỏi mẫu; khi cách nhận diện chính bị cố ý làm hỏng, ≥ 8/10 skill chuẩn vẫn chạy xong; khi chèn hộp thoại bất ngờ, ≥ 8/10 skill chuẩn vẫn chạy xong.

@@ -54,8 +54,8 @@ Windows của công ty có thể khác.
 1. `teach record "Lưu ghi chú hôm nay"`.
 2. Mở Notepad, gõ `Xin chào`, `Ctrl+S`, gõ tên `ghichu-test.txt`, bấm **Save**. Nhấn phím tắt Dừng (`Ctrl+Alt+S`).
 3. Kỳ vọng: `skills\luu-ghi-chu-hom-nay\skill.yaml` hợp lệ theo [skill-format](./contracts/skill-format.md),
-   ~5 bước, mỗi bước có `intent`, ≥ 1 selector, ≥ 1 `expect` (trừ bước không suy ra được, có ghi chú); trạng
-   thái `draft` (SC-001).
+   ~5 bước, mỗi bước có `intent`, ≥ 1 selector, và ≥ 1 `expect` hoặc cảnh báo `unverifiable`; trên bộ workflow
+   chuẩn ≥ 80% số bước có `expect` tự sinh; trạng thái `draft` (SC-001).
 4. Ghi lại một lần có gõ mật khẩu vào trang đăng nhập bất kỳ → `events.jsonl` không có ký tự đó; ảnh bị che.
 5. Tắt model (để trống base URL) và lặp bước 1–3 → câu ý định dạng tất định (`Bấm "Save" (Button)`).
 6. Để ghi chạy quá 10 phút → tự dừng, skill vẫn được sinh.
@@ -76,7 +76,7 @@ teach bench bench\skills --mode 1      # model tắt, giao diện không đổi
 ## M3
 
 ```powershell
-teach eval                             # với model trong cài đặt
+teach eval --publish                   # với model trong cài đặt; ghi last_result.json khi ≥ 90%
 teach bench bench\skills --mode 2      # selector chính bị làm hỏng → pick_element
 teach bench bench\skills --mode 3      # hộp thoại chèn giữa chừng → diagnose
 ```
