@@ -20,7 +20,7 @@ Rust cụ thể (`Engine` + `Receiver<Event>`) và cách ánh xạ sang lệnh/s
 | Ghi | `start_recording(goal)` · `pause_recording()` · `resume_recording()` · `stop_recording() -> SkillName \| NoSteps` | `busy` nếu đang chạy skill (FR-025) |
 | Skill | `list_skills() -> [SkillSummary]` · `get_skill(name) -> Skill` · `save_skill(name, Skill) -> Ok \| [FieldError]` · `delete_skill(name)` · `step_image(name, step, before\|after) -> path` | `save_skill` kiểm tra hợp lệ (FR-014), tự đổi `ready → draft` nếu bước đổi (FR-017) và trả `status_changed` |
 | Tự vá | `pending_patches(name) -> [Patch]` · `keep_patch(name, step, idx)` · `undo_patch(name, step, idx)` | không đổi `status` (FR-027) |
-| Chạy | `start_run(name, inputs, trigger) -> RunId` · `stop_run()` · `answer_prompt(prompt_id, choice)` · `confirm_trial(run_id, ok)` · `list_runs(name) -> [RunSummary]` · `get_run_log(name, run_id) -> [RunLogLine]` | `start_run` thiếu input → `invalid` kèm danh sách thiếu |
+| Chạy | `start_run(name, inputs, trigger) -> RunId` (trả `busy` khi còn lần chạy ở `running`/`paused`/`stopping` — gồm lần chạy vừa huỷ mà lời gọi đang dở chưa trả về, tối đa ~30 s) · `stop_run()` · `answer_prompt(prompt_id, choice)` · `confirm_trial(run_id, ok)` · `list_runs(name) -> [RunSummary]` · `get_run_log(name, run_id) -> [RunLogLine]` | `start_run` thiếu input → `invalid` kèm danh sách thiếu |
 | Bí mật | `set_secret(key, value)` · `delete_secret(key)` · `secret_exists(key) -> bool` | chỉ ghi; giá trị không bao giờ đi ra |
 | Cài đặt | `get_settings() -> Settings` (không có key) · `save_settings(Settings) -> Ok \| [FieldError]` · `set_api_key(value)` · `api_key_set() -> bool` · `data_notice() -> Text` · `accept_data_notice()` | lõi từ chối gọi model khi notice chưa chấp nhận (FR-037) |
 | Kiểm tra | `test_connection() -> Ok \| ModelError` · `run_eval() -> EvalReport` | chạy trên luồng worker; tiến độ qua sự kiện |
@@ -32,7 +32,7 @@ Rust cụ thể (`Engine` + `Receiver<Event>`) và cách ánh xạ sang lệnh/s
 |---|---|
 | `recording_state` | `recording \| paused \| stopped`, thời gian đã ghi |
 | `recording_warning` | `coordinates_only` / `text_not_recorded` cho bước vừa ghi (FR-008) |
-| `run_state` | run_id, skill, trạng thái (data-model §Run), bước hiện tại, nấc, model_calls/ngân sách, thời gian/ngân sách |
+| `run_state` | run_id, skill, trạng thái (data-model §Run, gồm `stopping`), bước hiện tại, nấc, model_calls/ngân sách, thời gian máy tự làm/ngân sách; khi kết thúc kèm lý do: `failed(time_budget \| model_budget \| approval_timeout \| stuck_timeout \| rejected \| launch_failed \| no_responder \| disk_full \| input_guard_lost)`, `cancelled(user \| emergency_stop)` |
 | `run_log` | một dòng log vừa ghi (đã lọc bí mật) |
 | `prompt` | **yêu cầu người dùng** (dưới) |
 | `prompt_closed` | prompt_id, lý do (`answered`, `expired`, `superseded`) |
@@ -45,7 +45,9 @@ Rust cụ thể (`Engine` + `Receiver<Event>`) và cách ánh xạ sang lệnh/s
 ```text
 { id, kind, context, choices, deadline? }
 kind ∈ approval        choices: approve | reject
-       stuck           choices: continue | cancel          context: lý do (kể cả lỗi model), ảnh lúc ghi, ảnh hiện tại
+       stuck           choices: continue | cancel          context: lý do (`repair_budget`, `step_timeout` — bước vượt
+                                                       3 phút, `target_unresponsive`, `focus_mismatch_secret`,
+                                                       lỗi model `auth_error`/`unavailable`), ảnh lúc ghi, ảnh hiện tại
        user_input      choices: continue | stop
        missing_secret  choices: continue | cancel          context: tên khoá (gọi set_secret trước khi continue)
        schedule_ask    choices: run_now | postpone(minutes) | skip     context: lịch, skill, inputs

@@ -67,7 +67,12 @@ copy sang thư mục skill).
             (tự vá và hoàn tác tự vá KHÔNG đổi trạng thái)
 ```
 
-Chỉ skill `ready` được gắn vào lịch (FR-039). Skill về `draft` thì các lịch của nó bị tạm ngưng (không
+Chỉ skill `ready` được gắn vào lịch (FR-039).
+
+**Ghi đồng thời** (FR-013): mọi thao tác ghi `skill.yaml` đi qua `store::update_skill(name, |skill| ...)` — giữ khoá
+theo skill, đọc lại file mới nhất, áp đúng thay đổi của mình, ghi nguyên tử. Gắn nhãn nền: với mỗi bước, chỉ đặt
+`intent` khi bước cùng `id` còn tồn tại và `intent` hiện tại vẫn bằng nhãn tất định đã sinh lúc biên dịch;
+ngược lại bỏ qua bước đó. Gắn nhãn nền không đổi `status`. Skill về `draft` thì các lịch của nó bị tạm ngưng (không
 kích hoạt) kèm lý do (giao diện 002 hiển thị); chuyển lại `ready` thì lịch tự hoạt động lại.
 
 ### Input (tham số đầu vào)
@@ -145,12 +150,15 @@ này; nếu không, gọi `CredWriteW` trực tiếp trong `secrets.rs`.
 
 ```text
 running ⇄ paused(reason)        reason ∈ {user_input, approval, stuck, missing_secret}
-running → succeeded | failed(reason) | cancelled
+running → succeeded | failed(reason) | cancelled(reason)        reason ∈ {user, emergency_stop}
+(dừng khẩn cấp: running → stopping → cancelled(emergency_stop); `stopping` kéo dài tới khi lời gọi đang dở
+ (model ≤ 30 s, ứng dụng đích ≤ 5 s + 2 s + 5 s) trả về; kết quả của nó bị bỏ; sự kiện `cancelled` phát ≤ 2 s,
+ không chờ `stopping` kết thúc)
 (ứng dụng mở lại thấy run chưa kết thúc) → interrupted
 ```
 
 `failed.reason` ∈ {`time_budget`, `model_budget`, `approval_timeout`, `stuck_timeout`,
-`rejected`, `launch_failed`, `no_responder`} (`no_responder`: yêu cầu người dùng không thể được trả lời — FR-050). Lần chạy `trial` thành công mở hộp "Xác nhận skill này chạy đúng?".
+`rejected`, `launch_failed`, `no_responder`, `disk_full`, `input_guard_lost`} (`no_responder`: yêu cầu người dùng không thể được trả lời — FR-050). Lần chạy `trial` thành công mở hộp "Xác nhận skill này chạy đúng?".
 
 **Giữ log** (FR-026): sau mỗi lần chạy kết thúc, giữ `keep_runs_per_skill` (mặc định 50) thư mục mới
 nhất trong `runs\<skill>\`, xoá phần còn lại; không đụng run đang `running`/`paused`.
@@ -194,7 +202,7 @@ lần mới (không chồng hộp hỏi).
 | model.data_notice_accepted | false (FR-037) |
 | language | `vi` hoặc `en`; mặc định theo ngôn ngữ Windows, không khớp thì `vi` |
 | hotkeys.emergency_stop / record_pause / record_stop | `Ctrl+Alt+Esc` / `Ctrl+Alt+P` / `Ctrl+Alt+S` |
-| budget.max_minutes / max_model_calls / max_repairs_per_step | 30 / 20 / 2 |
+| budget.max_minutes / max_model_calls / max_repairs_per_step / max_step_minutes | 30 / 20 / 2 / 3 — phút chỉ đếm thời gian máy tự làm, không tính tạm dừng chờ người (FR-023) |
 | schedule.idle_minutes / ask_timeout_minutes / approval_timeout_minutes | 3 / 5 / 30 |
 | keep_runs_per_skill | 50 |
 | start_with_windows | false (lõi chỉ lưu giá trị; việc đăng ký khởi động cùng Windows thuộc spec 002) |

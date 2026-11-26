@@ -38,7 +38,7 @@ Per-Monitor-V2 DPI aware.
 
 **Project Type**: thư viện lõi + CLI (giao diện desktop ở spec 002)
 
-**Performance Goals**: dừng khẩn cấp ≤ 1 s (SC-003); một bước ở nấc 1 ≤ 2 s gồm chờ giao diện ổn định ("ổn định" = cây phần tử của cửa sổ đích và tiêu đề không đổi trong 300 ms liên tiếp, chờ tối đa 5 s rồi vẫn kiểm tra `expect`);
+**Performance Goals**: dừng khẩn cấp: không gửi thao tác sau ≤ 1 s, báo "đã dừng" ≤ 2 s (SC-003, FR-022); mỗi lần hỏi ứng dụng đích ≤ 5 s + 1 lần thử lại (FR-051); mỗi bước ≤ 3 phút thời gian máy tự làm (FR-023); gắn nhãn nền ≤ 2 phút/skill (FR-011); dung lượng trống tối thiểu 500 MB (FR-052); hook bị ngắt phát hiện ≤ 1 s (FR-053); một bước ở nấc 1 ≤ 2 s gồm chờ giao diện ổn định ("ổn định" = cây phần tử của cửa sổ đích và tiêu đề không đổi trong 300 ms liên tiếp, chờ tối đa 5 s rồi vẫn kiểm tra `expect`);
 ghi không làm trễ thao tác người dùng (hook trả ≤ 1 ms); mỗi lần gọi model ≤ 30 s (timeout); sự kiện trạng
 thái phát ra ≤ 100 ms sau thay đổi (để giao diện 002 đạt ≤ 1 s).
 

@@ -68,7 +68,8 @@ teach bench bench\skills --mode 1      # model tắt, giao diện không đổi
 
 - Kỳ vọng: 10/10 skill `succeeded`, tổng `model_calls` = 0, mã thoát 0 (SC-002).
 - Dừng khẩn cấp: chạy một skill dài, nhấn `Ctrl+Alt+Esc` → thao tác cuối cùng trong log cách lúc nhấn
-  ≤ 1 s; lặp 10 lần, 10/10 (SC-003).
+  ≤ 1 s và `cancelled(emergency_stop)` ≤ 2 s; lặp 10 lần, 10/10; thêm 3 lần nhấn khi ứng dụng đích bị treo
+  (SC-003). Phần "nhấn khi đang chờ model" đo ở §M3.
 - Chạm chuột giữa lần chạy (`teach run`) → trạng thái `paused(user_input)`, console hỏi; chọn `continue` → chạy tiếp.
 - Bước `approval: true` → dừng tới khi chọn `approve`; `reject` → `failed(rejected)`.
 - Sửa `expect` của một bước thành điều không thể đúng → sau 2 lần sửa, `paused(stuck)` hiện ảnh và lý do.
@@ -93,6 +94,9 @@ Kiểm tra riêng tư (SC-009): đặt một bí mật `{{secret:demo}}` = `S3cr
 Select-String -Path "$env:LOCALAPPDATA\teach\*" -Pattern 'S3cret!xyz' -Recurse   # 0 kết quả
 # request gửi model không chứa 'KHACH-HANG-ABC' hay văn bản đã gõ
 ```
+
+Dừng khẩn cấp khi đang chờ model (máy chủ giả trả chậm 30 s): 3/3 lần không có thao tác sau 1 s và
+`cancelled(emergency_stop)` ≤ 2 s; `start_run` ngay sau đó trả `busy` tới khi lời gọi cũ trả về (SC-003).
 
 Ngắt mạng → skill chế độ 1 vẫn chạy xong; skill chế độ 2 chuyển `paused(stuck)` với lý do "không kết nối
 được máy chủ model" (SC-010).

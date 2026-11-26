@@ -8,7 +8,7 @@ language: vi
 model: {base_url: "https://llm.congty.local/v1", name: "deepseek-chat", timeout_seconds: 30,
         data_notice_accepted: true}
 hotkeys: {emergency_stop: "Ctrl+Alt+Esc", record_pause: "Ctrl+Alt+P", record_stop: "Ctrl+Alt+S"}
-budget: {max_minutes: 30, max_model_calls: 20, max_repairs_per_step: 2}
+budget: {max_minutes: 30, max_model_calls: 20, max_repairs_per_step: 2, max_step_minutes: 3}
 schedule: {idle_minutes: 3, ask_timeout_minutes: 5, approval_timeout_minutes: 30}
 keep_runs_per_skill: 50
 start_with_windows: false
@@ -49,7 +49,7 @@ Dòng đầu là header, sau đó mỗi sự kiện một dòng, dòng cuối l�
 
 ```json
 {"type":"header","run":"20261122-093012","skill":"xuat-bao-cao-tuan","trigger":"trial",
- "inputs":{"tuan":"2026-W47"},"budget":{"max_minutes":30,"max_model_calls":20,"max_repairs_per_step":2},
+ "inputs":{"tuan":"2026-W47"},"budget":{"max_minutes":30,"max_model_calls":20,"max_repairs_per_step":2,"max_step_minutes":3},
  "app_version":"0.1.0","prompt_version":1}
 {"type":"step","step":3,"rung":1,"selector_index":0,"result":"ok","ms":420,"shot":"s03.png"}
 {"type":"model_call","step":4,"kind":"pick_element","request":"<phần user đã gửi>","response":"<content>",
