@@ -66,9 +66,9 @@ log giữ 50 lần chạy/skill; thông điệp lõi 2 ngôn ngữ.
 | III. Kiểm tra bằng code | `expect` là danh sách Condition tất định; lựa chọn của model luôn qua `expect`; tự vá chỉ khi `expect` đạt | ✅ | ✅ |
 | IV. Con người nắm quyền | Cờ dừng khẩn cấp trong luồng hook của lõi (không phụ thuộc giao diện, R-8); input không mang `TEACH_MAGIC` → tạm dừng (R-2); `approval`; ngân sách; máy trạng thái lịch không có cạnh `due → running` không qua lựa chọn Chạy ngay (data-model); bề mặt điều khiển không có lệnh "tự đồng ý" ([control-surface](./contracts/control-surface.md)) | ✅ | ✅ |
 | V. Riêng tư & bí mật | `is_password` + mặc định coi là bí mật khi không xác định (R-4); che ảnh; bí mật chỉ đọc từ Credential Manager ngay trước khi gõ; bộ lọc dữ liệu gửi model có test (SC-009); API key và bí mật chỉ ghi, không có lệnh đọc ra qua bề mặt điều khiển | ✅ | ✅ |
-| VI. Đo được mới tính | M0 spike ([quickstart §M0](./quickstart.md#m0)) trước khi xây; `bench`/`eval`/`probe-model` là lệnh CLI có mã thoát theo ngưỡng; thứ tự M2 trước M3; cổng dấu vân tay: test `eval_gate` fail khi prompt/bộ lọc/bộ phân tích đổi mà chưa có kết quả `eval` ≥ 90% trùng dấu vân tay (kết quả tạo trên máy công ty) | ✅ | ✅ |
+| VI. Đo được mới tính | M0 spike ([quickstart §M0](./quickstart.md#m0)) trước khi xây; `bench`/`eval`/`probe-model` là lệnh CLI có mã thoát theo ngưỡng; thứ tự M2 trước M3; cổng dấu vân tay: test target riêng `eval_gate` (không chạy trong `cargo test` mặc định, bắt buộc ở bước kiểm tra phát hành `cargo test --test eval_gate`) fail khi prompt / `model/parse.rs` / `runner/candidates.rs` đổi mà chưa có kết quả `eval` ≥ 90% trùng dấu vân tay (kết quả tạo trên máy công ty) | ✅ | ✅ |
 | VII. Đơn giản | Một crate lõi (thư viện + CLI), không tokio, không DB; bỏ `terminator` (dep nặng), `enigo`, `global-hotkey` (phím tắt qua hook có sẵn); i18n tự viết 2 bảng | ✅ | ✅ |
-| Ràng buộc: một mô-đun model | Toàn bộ HTTP + prompt + phân tích ở `crates/teach-core/src/model.rs` | ✅ | ✅ |
+| Ràng buộc: một mô-đun model | Toàn bộ HTTP + prompt + phân tích ở mô-đun `crates/teach-core/src/model/` (`mod.rs`, `parse.rs`) | ✅ | ✅ |
 
 Không có vi phạm → bảng Complexity Tracking để trống. (Lựa chọn Tauri cho giao diện và quan hệ với Nguyên tắc
 VII được xử lý trong plan 002.)
@@ -121,9 +121,12 @@ crates/teach-core/
 │   ├── compiler.rs              # trace → skill (tách bước, selector, expect, nhãn)
 │   ├── runner/
 │   │   ├── mod.rs               # bậc thang nấc 0–5, ngân sách, tạm dừng/dừng, tự vá, yêu cầu người dùng
-│   │   ├── resolve.rs           # khớp selector, dựng danh sách ứng viên, so khớp bỏ dấu
+│   │   ├── resolve.rs           # khớp selector nấc 1, so khớp bỏ dấu
+│   │   ├── candidates.rs        # bộ lọc ứng viên cho pick_element/diagnose (≤ 40, lọc vai trò, xếp độ giống tên) — nằm trong dấu vân tay eval
 │   │   └── check.rs             # đánh giá Condition (expect, skip_if)
-│   ├── model.rs                 # MỘT mô-đun: HTTP, prompt, bộ lọc dữ liệu, phân tích câu trả lời
+│   ├── model/                   # MỘT mô-đun model
+│   │   ├── mod.rs               # HTTP, dựng đầu vào, bộ lọc dữ liệu (FR-033)
+│   │   └── parse.rs             # bộ phân tích câu trả lời — nằm trong dấu vân tay eval
 │   ├── eval.rs                  # chấm bộ câu hỏi mẫu; probe-model
 │   ├── bench.rs                 # 3 chế độ bộ đo (corrupt selector, chèn hộp thoại)
 │   ├── scheduler.rs             # máy trạng thái lần kích hoạt (thuần) + luồng tick; tính lần kế tiếp
@@ -149,7 +152,7 @@ crates/teach-core/
     ├── skill_lifecycle.rs       # draft ⇄ ready, tự vá không đổi trạng thái
     ├── runner_repair.rs         # nấc 2/4, tự vá, cấm sửa chữa khi expect rỗng
     ├── eval.rs                  # chấm bộ câu hỏi mẫu (3 loại), thông báo dữ liệu
-    ├── eval_gate.rs             # dấu vân tay hiện tại phải có kết quả ≥ 90% trong assets/eval/last_result.json
+    ├── eval_gate.rs             # [[test]] test = false: chỉ chạy bằng `cargo test --test eval_gate` ở bước kiểm tra phát hành
     └── fixtures/
 bench/skills/                    # 10 skill chuẩn (Notepad, Explorer, Calculator, Settings, trình duyệt, Office…)
 ```

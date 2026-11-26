@@ -1,6 +1,6 @@
 # Contract: giao tiếp với model
 
-Toàn bộ nằm sau **một mô-đun duy nhất** (`src/model.rs`, Constitution §Ràng buộc). Áp dụng FR-028…FR-034.
+Toàn bộ nằm sau **một mô-đun duy nhất** (`src/model/`: `mod.rs` HTTP + dựng đầu vào + bộ lọc dữ liệu, `parse.rs` bộ phân tích câu trả lời; Constitution §Ràng buộc). Danh sách ứng viên dựng ở `src/runner/candidates.rs`. Áp dụng FR-028…FR-034.
 
 ## Giao thức HTTP
 

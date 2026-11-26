@@ -28,7 +28,7 @@ diện thật; phần model dùng máy chủ giả trên `127.0.0.1` (máy dev k
 - [ ] T002 Create `crates/teach-core/Cargo.toml`: `[lib] name = "teach_core"`, `[[bin]] name = "teach" path = "src/bin/teach.rs"`; dependencies `uiautomation = "0.25"` (features `event`, `pattern`), `windows = "0.62"` (features for Win32 UI hooks/input/WindowsAndMessaging, RemoteDesktop (WTS), Graphics.Gdi, Media.Ocr, Graphics.Imaging, Storage.Streams, System.Threading), `xcap = "0.9"`, `image` (default-features off, feature `png`), `ureq = "3"`, `rustls-platform-verifier`, `serde` (derive), `serde_json`, `serde-saphyr = "2"`, `keyring = "4"`, `croner` (pinned exact version), `chrono`
 - [ ] T003 [P] Add `crates/teach-core/build.rs` + `crates/teach-core/teach.exe.manifest` embedding Per-Monitor-V2 DPI awareness and `asInvoker` for bin `teach`
 - [ ] T004 [P] Add `rust-toolchain.toml` (stable, components rustfmt + clippy) and `deny.toml` for `cargo deny check advisories licenses` (security checklist CHK004)
-- [ ] T005 [P] Create empty module skeleton matching plan.md: `crates/teach-core/src/{lib.rs,engine.rs,skill.rs,trace.rs,recorder.rs,compiler.rs,model.rs,eval.rs,bench.rs,scheduler.rs,store.rs,secrets.rs,i18n.rs}`, `src/runner/{mod.rs,resolve.rs,check.rs}`, `src/platform/{mod.rs,uia.rs,hooks.rs,input.rs,capture.rs,ocr.rs,window.rs}`, `src/bin/teach.rs`, `tests/support/mod.rs`; `cargo build` passes
+- [ ] T005 [P] Create empty module skeleton matching plan.md: `crates/teach-core/src/{lib.rs,engine.rs,skill.rs,trace.rs,recorder.rs,compiler.rs,eval.rs,bench.rs,scheduler.rs,store.rs,secrets.rs,i18n.rs}`, `src/model/{mod.rs,parse.rs}`, `src/runner/{mod.rs,resolve.rs,candidates.rs,check.rs}`, `src/platform/{mod.rs,uia.rs,hooks.rs,input.rs,capture.rs,ocr.rs,window.rs}`, `src/bin/teach.rs`, `tests/support/mod.rs`; `cargo build` passes
 
 ---
 
@@ -113,7 +113,7 @@ báo `unverifiable`; ký tự gõ vào ô mật khẩu không có trong `events.
 - [ ] T043 [US2] Add lệnh chạy vào `crates/teach-core/src/engine.rs`: `start_run(name, inputs, trigger)` (thiếu input → `invalid` kèm danh sách và ví dụ), `stop_run`, `answer_prompt`, `list_runs`, `get_run_log`; sự kiện `run_state`, `run_log`, `prompt`, `prompt_closed`, `run_finished`
 - [ ] T044 [US2] Implement `teach run <skill> [--input k=v]... [--trial] [--no-model]` in `crates/teach-core/src/bin/teach.rs`; mã thoát 0/1/2
 - [ ] T045 [US2] Implement `crates/teach-core/src/bench.rs` chế độ 1 + `teach bench <dir> --mode 1` in `crates/teach-core/src/bin/teach.rs`: chạy mọi skill trong thư mục, in bảng (skill, kết quả, số lần gọi model, thời gian, p95 thời gian mỗi bước so với mục tiêu ≤ 2 s ở nấc 1), mã thoát 0 nếu 10/10 và 0 lần gọi model
-- [ ] T046 [US2] Record 10 skill chuẩn bằng `teach record` vào `bench/skills/<name>/skill.yaml` (Notepad, File Explorer, Calculator, Settings, trình duyệt, ứng dụng Office hoặc tương đương — SC-002), mỗi skill có ít nhất một `expect` mỗi bước
+- [ ] T046 [US2] Record 10 skill chuẩn bằng `teach record` vào `bench/skills/<name>/skill.yaml` (Notepad, File Explorer, Calculator, Settings, trình duyệt, ứng dụng Office hoặc tương đương — SC-002), mỗi skill có ít nhất một `expect` mỗi bước — bước compiler gắn `unverifiable` thì bổ sung `expect` bằng tay trong `skill.yaml` (bộ đo chế độ 2/3 cần mọi bước kiểm chứng được, FR-020)
 
 **Checkpoint**: US1 + US2 chạy độc lập (quickstart §M2).
 
@@ -145,16 +145,16 @@ báo `unverifiable`; ký tự gõ vào ô mật khẩu không có trong `events.
 **Independent Test**: `teach bench bench\skills --mode 2` và `--mode 3` (máy công ty) → mỗi chế độ ≥ 8/10, 0 lần
 bấm sai lọt qua `expect` (quickstart §M3, SC-004, SC-005).
 
-- [ ] T053 [US4] Implement HTTP client in `crates/teach-core/src/model.rs` theo contracts/model-protocol.md §Giao thức: `POST {base_url}/chat/completions`, `Authorization: Bearer` từ `secrets::get`, `temperature: 0`, `stream: false`, không gửi `tools`/ảnh/`max_tokens` mặc định; chỉ đọc `choices[0].message.content`; timeout `model.timeout_seconds` (30); mỗi lần gửi (kể cả hỏi lại) ghi một dòng `model_call` vào `run.jsonl` theo contracts/storage-files.md (`kind`, `request` = đúng chuỗi đã gửi sau bộ lọc, `response`, `parsed`, `valid`, `ms`); 401/403 → `auth_error`, mạng/timeout/5xx → `unavailable`; không tự thử lại khi lỗi mạng; TLS qua kho chứng chỉ Windows, luôn kiểm tra chứng chỉ, không có cờ tắt; từ chối `base_url` không phải `https://` trừ `127.0.0.1`/`localhost` (FR-035); không hard-code giá trị mạng; mỗi lần gửi tăng `model_calls`
-- [ ] T054 [US4] Implement bộ phân tích câu trả lời in `crates/teach-core/src/model.rs`: xoá `<think>…</think>`/`<thinking>…</thinking>`, lấy đối tượng JSON cân bằng ngoặc đầu tiên (bỏ qua ngoặc trong chuỗi), kiểm tra tập cho phép theo loại; sai → gửi lại đúng một lần với `Invalid answer: <lý do>. Reply with exactly one line of JSON, for example <ví dụ>.`; vẫn sai → `none` / `ask_user` / nhãn tất định (FR-031)
-- [ ] T055 [US4] Implement dựng đầu vào + bộ lọc dữ liệu in `crates/teach-core/src/model.rs`: chỉ các trường được phép (intent, hành động, tiêu đề cửa sổ, tiến trình, tên/vai trò/mã/trạng thái phần tử, tên ô đích, **độ dài** văn bản); không bao giờ ảnh, bí mật, clipboard, văn bản đã gõ, giá trị tham số, Value của ô nhập; che chuỗi trùng (không phân biệt hoa thường) với văn bản đã gõ / giá trị tham số / giá trị bí mật bằng `‹đã ẩn›`, chuỗi < 3 ký tự không che trừ bí mật (FR-033); từ chối gọi khi `data_notice_accepted = false` (FR-037)
-- [ ] T056 [P] [US4] Write prompts `crates/teach-core/assets/prompts/{pick_element,diagnose,label_step}.txt`: system prompt tiếng Anh + 2–3 ví dụ mẫu có lời giải mỗi loại, đúng định dạng đầu vào ở model-protocol.md; hằng `PROMPT_VERSION` trong `model.rs`, ghi vào log mỗi lần gọi
+- [ ] T053 [US4] Implement HTTP client in `crates/teach-core/src/model/mod.rs` theo contracts/model-protocol.md §Giao thức: `POST {base_url}/chat/completions`, `Authorization: Bearer` từ `secrets::get`, `temperature: 0`, `stream: false`, không gửi `tools`/ảnh/`max_tokens` mặc định; chỉ đọc `choices[0].message.content`; timeout `model.timeout_seconds` (30); mỗi lần gửi (kể cả hỏi lại) ghi một dòng `model_call` vào `run.jsonl` theo contracts/storage-files.md (`kind`, `request` = đúng chuỗi đã gửi sau bộ lọc, `response`, `parsed`, `valid`, `ms`); 401/403 → `auth_error`, mạng/timeout/5xx → `unavailable`; không tự thử lại khi lỗi mạng; TLS qua kho chứng chỉ Windows, luôn kiểm tra chứng chỉ, không có cờ tắt; từ chối `base_url` không phải `https://` trừ `127.0.0.1`/`localhost` (FR-035); không hard-code giá trị mạng; mỗi lần gửi tăng `model_calls`
+- [ ] T054 [US4] Implement bộ phân tích câu trả lời in `crates/teach-core/src/model/parse.rs` (chỉ logic phân tích + kiểm tra tập cho phép; vòng hỏi lại nằm ở `model/mod.rs`): xoá `<think>…</think>`/`<thinking>…</thinking>`, lấy đối tượng JSON cân bằng ngoặc đầu tiên (bỏ qua ngoặc trong chuỗi), kiểm tra tập cho phép theo loại; sai → gửi lại đúng một lần với `Invalid answer: <lý do>. Reply with exactly one line of JSON, for example <ví dụ>.`; vẫn sai → `none` / `ask_user` / nhãn tất định (FR-031)
+- [ ] T055 [US4] Implement dựng đầu vào + bộ lọc dữ liệu in `crates/teach-core/src/model/mod.rs`: chỉ các trường được phép (intent, hành động, tiêu đề cửa sổ, tiến trình, tên/vai trò/mã/trạng thái phần tử, tên ô đích, **độ dài** văn bản); không bao giờ ảnh, bí mật, clipboard, văn bản đã gõ, giá trị tham số, Value của ô nhập; che chuỗi trùng (không phân biệt hoa thường) với văn bản đã gõ / giá trị tham số / giá trị bí mật bằng `‹đã ẩn›`, chuỗi < 3 ký tự không che trừ bí mật (FR-033); từ chối gọi khi `data_notice_accepted = false` (FR-037)
+- [ ] T056 [P] [US4] Write prompts `crates/teach-core/assets/prompts/{pick_element,diagnose,label_step}.txt`: system prompt tiếng Anh + 2–3 ví dụ mẫu có lời giải mỗi loại, đúng định dạng đầu vào ở model-protocol.md; hằng `PROMPT_VERSION` trong `model/mod.rs`, ghi vào log mỗi lần gọi
 - [ ] T057 [P] [US4] Test `crates/teach-core/tests/model_parse.rs` với máy chủ HTTP giả trên `127.0.0.1` (std `TcpListener`): `<think>` + JSON, chữ thừa quanh JSON, JSON lệch rồi đúng ở lần hỏi lại, sai cả hai lần → `none`, số ngoài danh sách, 401 → `auth_error`, timeout → `unavailable`, `base_url` `http://` không phải loopback → bị từ chối trước khi gửi
 - [ ] T058 [P] [US4] Test `crates/teach-core/tests/privacy.rs` (phần model): request gửi máy chủ giả không chứa bí mật `S3cret!xyz`, giá trị tham số `KHACH-HANG-ABC`, văn bản đã gõ — kể cả khi chúng nằm trong tiêu đề cửa sổ/tên phần tử; `run.jsonl` và mọi file trong thư mục dữ liệu không chứa bí mật (SC-009)
-- [ ] T059 [US4] Implement nấc 2 `pick_element` in `crates/teach-core/src/runner/resolve.rs` + `crates/teach-core/src/runner/mod.rs`: tối đa 40 ứng viên từ cửa sổ đích, lọc vai trò tương thích hành động, xếp theo độ giống tên; kết quả luôn qua `expect`; **không dùng ở bước `expect` rỗng** → chuyển thẳng nấc 5 (FR-020)
+- [ ] T059 [US4] Implement nấc 2 `pick_element`: bộ lọc ứng viên in `crates/teach-core/src/runner/candidates.rs` (dùng chung cho danh sách NEW ELEMENTS của `diagnose`), gọi model in `crates/teach-core/src/runner/mod.rs`: tối đa 40 ứng viên từ cửa sổ đích, lọc vai trò tương thích hành động, xếp theo độ giống tên; kết quả luôn qua `expect`; **không dùng ở bước `expect` rỗng** → chuyển thẳng nấc 5 (FR-020)
 - [ ] T060 [US4] Implement nấc 4 `diagnose` in `crates/teach-core/src/runner/mod.rs`: `wait` (chờ 2 s rồi kiểm tra lại), `retry`, `dismiss` chỉ phần tử `Button` trong NEW ELEMENTS (FR-029), `ask_user`; bước `approval: true` → `retry` đổi thành `ask_user`, log ghi cả câu trả gốc (FR-028); không gọi ở bước `expect` rỗng; lỗi model → prompt `stuck` kèm nguyên nhân (FR-032)
 - [ ] T061 [US4] Implement tự vá in `crates/teach-core/src/runner/mod.rs` + lệnh `pending_patches`/`keep_patch`/`undo_patch` in `crates/teach-core/src/engine.rs`: khi nấc 2 thành công và `expect` đạt, thêm selector (`automation_id` hoặc `role`+`name`) với `added_by_run`, `pending_review: true`, giữ selector cũ, ghi log `self_patch`; không đổi `status` (FR-027); `teach skill patches <skill> [--keep|--undo <step>:<idx>]` in `crates/teach-core/src/bin/teach.rs`
-- [ ] T062 [US4] Implement `label_step` in `crates/teach-core/src/compiler.rs` qua `model.rs`: chỉ bước trước/hiện tại/sau, bước gõ chỉ gửi "type N characters into <ô>", tham số `LANGUAGE` theo cài đặt; kết quả một dòng 1–120 ký tự; lỗi/không có model → nhãn tất định (FR-011)
+- [ ] T062 [US4] Implement `label_step` in `crates/teach-core/src/compiler.rs` qua mô-đun `model`: chỉ bước trước/hiện tại/sau, bước gõ chỉ gửi "type N characters into <ô>", tham số `LANGUAGE` theo cài đặt; kết quả một dòng 1–120 ký tự; lỗi/không có model → nhãn tất định (FR-011)
 - [ ] T063 [US4] Implement bench chế độ 2/3 in `crates/teach-core/src/bench.rs` + cờ `--corrupt-primary` (xoá `automation_id`, đổi tên selector đầu) và `--inject-dialog-at <step>` (bật hộp thoại `MessageBox` từ luồng phụ trước bước đó) cho `teach run`/`teach bench --mode 2|3`
 - [ ] T064 [P] [US4] Test `crates/teach-core/tests/runner_repair.rs` với `FakeDesktop` + máy chủ model giả: chọn đúng → tự vá `pending_review`; chọn sai → `expect` bắt, không coi là thành công; bước `expect` rỗng → không có request nào tới máy chủ, prompt `stuck`; `retry` ở bước `approval` → prompt, hành động không lặp; mất mạng → `stuck` với lý do `unavailable`; `dismiss` số không phải Button → coi là sai định dạng
 
@@ -170,13 +170,13 @@ bấm sai lọt qua `expect` (quickstart §M3, SC-004, SC-005).
 `teach eval` in tỉ lệ đúng theo loại, mã thoát 0 khi ≥ 90%; đổi model → chạy lại để so sánh.
 
 - [ ] T065 [US5] Add lệnh cài đặt vào `crates/teach-core/src/engine.rs`: `get_settings` (không có key), `save_settings` (kiểm tra phím tắt trùng nhau, thư mục dữ liệu theo T014, `base_url` phải `https://` trừ loopback — FR-035), `set_api_key`, `api_key_set`, `data_notice` (văn bản theo ngôn ngữ, nêu thứ được gửi / không bao giờ gửi / tên phần tử có thể chứa dữ liệu nghiệp vụ), `accept_data_notice`; đổi `base_url` hoặc `name` → đặt lại `data_notice_accepted = false`
-- [ ] T066 [US5] Implement `test_connection` in `crates/teach-core/src/model.rs` + `crates/teach-core/src/engine.rs`: phân biệt không kết nối được / sai khoá / không có model đó
+- [ ] T066 [US5] Implement `test_connection` in `crates/teach-core/src/model/mod.rs` + `crates/teach-core/src/engine.rs`: phân biệt không kết nối được / sai khoá / không có model đó
 - [ ] T067 [US5] Implement `crates/teach-core/src/eval.rs` + `crates/teach-core/assets/eval/default.jsonl` (≥ 20 ca `pick_element`, ≥ 10 ca `diagnose`, ≥ 10 ca `label_step`, toàn dữ liệu giả, định dạng contracts/storage-files.md §Câu hỏi mẫu): `pick_element`/`diagnose` chấm bằng so sánh JSON sau phân tích, `label_step` chấm theo quy tắc ở data-model §Offline eval case (phân tích được, một dòng, 1–120 ký tự, đúng `language`, chứa mọi `must_contain`, không chứa `must_not_contain`); báo cáo theo loại + tổng; ghi kết quả có dấu vân tay vào `eval\results\` (data-model §Kết quả có dấu vân tay); nạp thêm `eval\*.jsonl` trong thư mục dữ liệu; lệnh `run_eval` + sự kiện `eval_progress`/`eval_done`
 - [ ] T068 [US5] Implement `teach eval [--cases <file>] [--publish]` (`--publish` sao kết quả ≥ 90% vào `crates/teach-core/assets/eval/last_result.json`) và `teach probe-model` (thay spike T012; in tương thích OpenAI, `json_schema`, phần suy nghĩ, p50/p95, 20 lần JSON một dòng; mã thoát 0 nếu ≥ 19/20) in `crates/teach-core/src/bin/teach.rs`
 - [ ] T069 [US5] Implement `teach config set-model --url <u> --name <n>`, `teach config set-key` (stdin, không echo), `teach config accept-notice` (in thông báo, yêu cầu gõ `yes`) in `crates/teach-core/src/bin/teach.rs`
 - [ ] T070 [P] [US5] Test `crates/teach-core/tests/eval.rs` với máy chủ giả: tỉ lệ đúng tính đúng theo cả 3 loại (`label_step` sai ngôn ngữ / hai dòng / chứa chuỗi cấm → không đạt); notice chưa chấp nhận → không có request; đổi URL → notice bị đặt lại
 
-- [ ] T081 [US5] Implement cổng dấu vân tay (Constitution VI): hàm `fingerprint()` FNV-1a 64-bit tự viết in `crates/teach-core/src/eval.rs` trên `assets/prompts/*`, `src/model.rs`, `src/runner/resolve.rs` (chuẩn hoá LF); test `crates/teach-core/tests/eval_gate.rs` fail khi `assets/eval/last_result.json` thiếu, dấu vân tay khác dấu vân tay hiện tại, hoặc điểm tổng/từng loại < 90%; thông báo lỗi chỉ dẫn chạy `teach eval --publish` trên máy công ty (không có cờ bỏ qua)
+- [ ] T081 [P] [US5] Implement cổng dấu vân tay (Constitution VI): hàm `fingerprint()` FNV-1a 64-bit tự viết in `crates/teach-core/src/eval.rs` trên `assets/prompts/*`, `src/model/parse.rs` và `src/runner/candidates.rs` (chuẩn hoá LF); khai báo `[[test]] name = "eval_gate" path = "tests/eval_gate.rs" test = false` trong `crates/teach-core/Cargo.toml` để `cargo test` mặc định không chạy nó trên máy dev; test `crates/teach-core/tests/eval_gate.rs` (chạy bằng `cargo test --test eval_gate`) fail khi `assets/eval/last_result.json` thiếu, dấu vân tay khác dấu vân tay hiện tại, hoặc điểm tổng/từng loại < 90%; thông báo lỗi chỉ dẫn chạy `teach eval --publish` trên máy công ty (không có cờ bỏ qua)
 
 **Checkpoint**: US4 + US5 hoàn chỉnh (quickstart §M3).
 
@@ -202,11 +202,12 @@ idle và khoá máy giả; 0 `run_started` khi chưa có `run_now` (SC-008).
 ## Phase 10: Polish & Cross-Cutting Concerns
 
 - [ ] T076 [P] Write `crates/teach-core/README.md`: cách build, các lệnh CLI, vị trí dữ liệu, giới hạn đã biết (research R-11: ứng dụng chạy quyền Administrator, màn hình khoá, ứng dụng không có UIA)
-- [ ] T077 Run `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo deny check`, `cargo test` sạch trên toàn workspace
+- [ ] T077 Run `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo deny check`, `cargo test` sạch trên toàn workspace (không gồm `eval_gate`)
 - [ ] T078 Rà soát `specs/001-teach-a-task/checklists/security.md` với code hiện tại; ghi các mục còn mở thành issue hoặc sửa spec
 - [ ] T079 Chạy quickstart §M1, §M2, §M4 (phần lõi: dạy → chạy thử → phê duyệt → xác nhận chỉ bằng CLI, SC-007), §M5 trên máy dev; ghi kết quả vào `specs/001-teach-a-task/quickstart.md` (mục kết quả cuối file)
 - [ ] T080 (**Máy công ty**) Chạy quickstart §M3 (`teach eval --publish` để tạo `last_result.json` cho T081, `teach bench --mode 2|3`, kiểm tra riêng tư SC-009, ngắt mạng SC-010) với DeepSeek và GLM; chọn model mặc định theo SC-004 và ghi vào `specs/001-teach-a-task/research.md`
 
+- [ ] T082 Kiểm tra phát hành (sau T080): `cargo test --test eval_gate` MUST pass với `crates/teach-core/assets/eval/last_result.json` vừa publish từ máy công ty; không phát hành khi test này đỏ (Constitution VI)
 ---
 
 ## Dependencies & Execution Order
@@ -214,7 +215,7 @@ idle và khoá máy giả; 0 `run_started` khi chưa có `run_now` (SC-008).
 ### Phase Dependencies
 
 - **Setup (P1)** → **M0 Spike (P2)** → **Foundational (P3)** → các story → **Polish (P10)**
-- Spike chạy song song; T013 chờ T006–T012. Foundational dùng kết quả spike (T021 ← T006/T007/T010, T025 ← T009, T026 ← T008, T019 ← T011)
+- Spike chạy song song; T013 chờ T006–T012. T082 (kiểm tra phát hành) chờ T080 và T081. Foundational dùng kết quả spike (T021 ← T006/T007/T010, T025 ← T009, T026 ← T008, T019 ← T011)
 
 ### User Story Dependencies
 
@@ -228,7 +229,7 @@ idle và khoá máy giả; 0 `run_started` khi chưa có `run_now` (SC-008).
 ### Within Each Story
 
 - Fixture/test viết trước và phải fail, rồi mới implement
-- `skill.rs`/`trace.rs` trước `compiler.rs`; `check.rs`/`resolve.rs` trước `runner/mod.rs`; runner trước lệnh engine; engine trước CLI
+- `skill.rs`/`trace.rs` trước `compiler.rs`; `check.rs`/`resolve.rs`/`candidates.rs` trước `runner/mod.rs`; runner trước lệnh engine; engine trước CLI
 
 ### Parallel Opportunities
 

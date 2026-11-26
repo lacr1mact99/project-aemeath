@@ -93,7 +93,7 @@ Thay đổi so với `draft-v0.3.md` §5 được đánh dấu **(đổi)**.
   HTTPS + CA + proxy công ty; endpoint có
   đúng `/chat/completions` kiểu OpenAI; có nhận `response_format: json_schema`; phần suy nghĩ trả trong
   `<think>` hay trường riêng; độ trễ p50/p95; giới hạn ngữ cảnh; ≥ 19/20 câu trả lời JSON một dòng hợp lệ.
-  Nếu giao thức khác OpenAI: chỉ sửa `src/model.rs` (Constitution §Ràng buộc).
+  Nếu giao thức khác OpenAI: chỉ sửa mô-đun `src/model/` (Constitution §Ràng buộc).
 
 ## R-7. Ngôn ngữ prompt gửi model
 
