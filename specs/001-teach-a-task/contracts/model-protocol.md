@@ -34,7 +34,7 @@ Content-Type: application/json
    `Invalid answer: <lý do>. Reply with exactly one line of JSON, for example <ví dụ hợp lệ>.`
 5. Vẫn sai → kết quả là `none` (pick_element), `ask_user` (diagnose), hoặc nhãn tất định (label_step).
 
-Mỗi lần gửi (kể cả gửi lại) tính 1 vào `model_calls` của lần chạy.
+Mỗi lần gửi (kể cả gửi lại) trong lần chạy tính 1 vào `model_calls` của lần chạy đó. Lời gọi ngoài lần chạy (`label_step`, `eval`, `probe-model`, `test_connection`) không tính vào `model_calls` của lần chạy nào; log của chúng: xem storage-files.md §Log lời gọi model ngoài lần chạy.
 
 ## Dữ liệu được phép gửi (FR-030, FR-033)
 
@@ -46,7 +46,9 @@ thái (`enabled`, `focused`, `selected`, `checked`) của phần tử, tên ô �
 **Che chuỗi trùng (FR-033)**: trước khi gửi, mọi đoạn trong phần user (tiêu đề cửa sổ, tên phần tử, ý định)
 trùng — không phân biệt hoa thường — với văn bản đã gõ, giá trị tham số, hoặc giá trị bí mật của lần chạy/bản
 ghi đều được thay bằng `‹đã ẩn›`. Chuỗi rỗng hoặc ngắn hơn 3 ký tự không đưa vào danh sách che (tránh che mất
-mọi chữ "a"); giá trị bí mật thì luôn che bất kể độ dài.
+mọi chữ "a" — miễn trừ có chủ đích); giá trị bí mật thì luôn che bất kể độ dài. SC-009 chỉ tính chuỗi ≥ 3 ký tự và mọi giá trị bí mật.
+
+**Giới hạn kích thước (FR-030)**: tổng độ dài toàn bộ `messages` gửi đi (system prompt + ví dụ mẫu + câu hỏi) tính bằng số ký tự ÷ 4 MUST ≤ 2.000. Vượt thì bỏ ứng viên từ cuối danh sách (độ giống thấp nhất) tới khi đạt; không còn ứng viên nào → kết quả `ask_user` (diagnose) / `none` (pick_element), không gửi.
 
 ## 1. `pick_element` (nấc 2)
 
@@ -87,7 +89,7 @@ Answer with one line of JSON: {"action":"wait"} | {"action":"retry"} | {"action"
 
 - Giá trị cho phép: `wait` (chờ thêm 2 s rồi kiểm tra lại `expect`), `retry` (thực hiện lại hành động),
   `dismiss` với `choice` trỏ tới phần tử vai trò `Button` trong danh sách, `ask_user`.
-- `dismiss` chỉ được bấm phần tử nằm trong danh sách NEW ELEMENTS (FR-029).
+- `dismiss` chỉ được bấm phần tử nằm trong danh sách NEW ELEMENTS (FR-029) và có nhãn (không phân biệt hoa thường, sau khi bỏ dấu) thuộc danh sách cố định: Cancel, Close, OK, Đóng, Huỷ, Hủy. `dismiss` trỏ nút khác (ví dụ "Don't Save" trong ví dụ trên) → xử lý như `ask_user`, không bấm.
 - Bước có `approval: true`: `retry` được đổi thành `ask_user` trước khi thực hiện (FR-028); log ghi cả câu trả
   gốc lẫn quyết định sau khi đổi. Không gọi `diagnose` ở bước có `expect` rỗng (FR-020).
 

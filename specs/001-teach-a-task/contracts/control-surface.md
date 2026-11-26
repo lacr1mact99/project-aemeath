@@ -47,8 +47,13 @@ Rust cụ thể (`Engine` + `Receiver<Event>`) và cách ánh xạ sang lệnh/s
 kind ∈ approval        choices: approve | reject
        stuck           choices: continue | cancel          context: lý do (`repair_budget`, `step_timeout` — bước vượt
                                                        3 phút, `target_unresponsive`, `focus_mismatch_secret`,
-                                                       lỗi model `auth_error`/`unavailable`), ảnh lúc ghi, ảnh hiện tại
-       user_input      choices: continue | stop
+                                                       `focus_mismatch` — bước thường, `unverifiable_step` — bước
+                                                       `expect` rỗng không khớp selector, `model_declined` — model
+                                                       trả `none`/`ask_user`, `approval_retry_blocked` — `retry` ở
+                                                       bước `approval`, `window_ambiguous` — nhiều cửa sổ khớp mà
+                                                       không kiểm chứng được, lỗi model `auth_error`/`unavailable`),
+                                                       ảnh lúc ghi, ảnh hiện tại
+       user_input      choices: continue | cancel          (cancel = "Huỷ")
        missing_secret  choices: continue | cancel          context: tên khoá (gọi set_secret trước khi continue)
        schedule_ask    choices: run_now | postpone(minutes) | skip     context: lịch, skill, inputs
 ```
@@ -56,6 +61,7 @@ kind ∈ approval        choices: approve | reject
 - Tại một thời điểm có tối đa một `prompt` của lần chạy đang chạy; `schedule_ask` không phát khi đang có lần
   chạy (lõi xếp hàng — data-model §Occurrence).
 - `answer_prompt` với `choice` không thuộc `choices` → `invalid`, lõi không đổi trạng thái.
+- `deadline`: lần chạy tay `budget.manual_prompt_timeout_minutes` (60 phút), lần chạy theo lịch `schedule.approval_timeout_minutes` (30 phút).
 - Hết `deadline` → lõi tự đóng prompt (`prompt_closed: expired`) và áp quy tắc của spec (thất bại / hỏi lại
   khi rảnh / bỏ lỡ) — không bao giờ coi hết hạn là đồng ý.
 

@@ -47,7 +47,7 @@ Windows của công ty có thể khác.
 | 0.6 | `Get-WindowsCapability -Online \| ? Name -like 'Language.OCR*'`; OCR 10 nút nhãn tiếng Việt | selector `ocr_text` (so khớp bỏ dấu) tìm đúng ≥ 9/10 nút (R-5) |
 | 0.7 | Chụp cửa sổ trên màn hình 150% và hai màn hình khác DPI | ảnh đúng khung cửa sổ; `xy_in_window` bấm đúng điểm |
 | 0.8 | Phím tắt dừng khẩn cấp và tạm dừng/dừng ghi qua hook khi cửa sổ khác đang focus (kể cả ứng dụng toàn màn hình) | nhận được 20/20 lần; tổ hợp không lọt vào ứng dụng đích |
-| 0.10 | `teach probe-model` với DeepSeek, rồi với GLM | in ra: tương thích OpenAI?, `json_schema`?, phần suy nghĩ ở đâu, p50/p95 độ trễ, giới hạn ngữ cảnh; **≥ 19/20** câu JSON một dòng hợp lệ (mã thoát 0) |
+| 0.10 | `cargo run --example spike_probe` (T012) với DeepSeek, rồi với GLM — từ M3 dùng `teach probe-model` (T068) | in ra: tương thích OpenAI?, `json_schema`?, phần suy nghĩ ở đâu, p50/p95 độ trễ, giới hạn ngữ cảnh; **≥ 19/20** câu JSON một dòng hợp lệ (mã thoát 0) |
 
 ## M1
 

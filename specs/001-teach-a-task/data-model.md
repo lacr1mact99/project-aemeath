@@ -17,6 +17,7 @@ thêm (bản ghi sự kiện, log lần chạy, lịch sử lịch). Định d�
 │   └── shots\NNNN{a|b}.png       # ảnh trước/sau (vùng mật khẩu đã che)
 ├── skills\<skill_name>\
 │   ├── skill.yaml                # contracts/skill-format.md
+│   ├── label_log.jsonl           # log lời gọi model `label_step` (ngoài lần chạy; contracts/storage-files.md)
 │   └── shots\                    # ảnh trước/sau của từng bước (copy từ trace khi biên dịch)
 └── runs\<skill_name>\<run_id>\
     ├── run.jsonl                 # contracts/storage-files.md
@@ -35,7 +36,8 @@ Thư mục dữ liệu được đổi trong Cài đặt; con trỏ tới thư m
 |---|---|---|
 | id | chuỗi | `YYYYMMDD-HHMMSS`, duy nhất |
 | goal | chuỗi | mô tả kết quả người dùng nhập; bắt buộc, ≤ 500 ký tự |
-| started_at / ended_at | thời điểm ISO 8601 | ended_at − started_at ≤ 10 phút (FR-005) |
+| started_at / ended_at | thời điểm ISO 8601 | thời gian ghi (không tính tạm dừng) = ended_at − started_at − paused_ms ≤ 10 phút (FR-005) |
+| paused_ms | số | tổng thời gian tạm dừng ghi, ghi vào `meta.yaml`; không tính vào giới hạn 10 phút |
 | stop_reason | enum | `user` \| `time_limit` |
 | screen | {width, height, scale} | để quy đổi toạ độ |
 | events | danh sách Event | xem contracts/trace-format.md; không chứa ký tự gõ trong ô mật khẩu (FR-006) |
@@ -179,18 +181,22 @@ nhất trong `runs\<skill>\`, xoá phần còn lại; không đụng run đang `
 ```text
 due ──(máy khoá)──► waiting_unlock ──(mở khoá)──┐
  │                                              ▼
+ │   (đang có lần chạy: due/waiting_unlock → queued, CHƯA hỏi;
+ │    lần chạy hiện tại kết thúc → queued → asking)
  └──────────────────────────────────────────► asking
                                                 │
        ┌───────────── Chạy ngay ────────────────┼── Hoãn N phút ──► postponed ──(hết N phút)──► asking
        ▼                                        ├── Bỏ qua ──► skipped
-   (đang có skill khác chạy? → queued → asking) ├── không trả lời, người dùng đang dùng máy
-       ▼                                        │      → hỏi lại khi máy rảnh (vẫn asking)
-   running → succeeded | failed                 └── hết wait_window → missed
+   running → succeeded | failed                 ├── không trả lời, người dùng đang dùng máy
+                                                │      → hỏi lại khi máy rảnh (vẫn asking)
+                                                └── hết wait_window → missed
 ```
 
 Bất biến: không có đường nào từ `due` tới `running` mà không qua lựa chọn "Chạy ngay" của người dùng
-(FR-041). Lần kích hoạt mới của cùng lịch đến khi lần cũ chưa xong → lần cũ được ghi `missed` và thay bằng
-lần mới (không chồng hộp hỏi).
+(FR-041). Khi đang có một lần chạy, lần kích hoạt mới ở `queued` và CHƯA hỏi; chỉ chuyển `asking` sau khi lần
+chạy hiện tại kết thúc. Lần kích hoạt mới của cùng lịch đến khi lần cũ chưa xong: nếu lần cũ ở
+`asking`/`queued`/`postponed`/`waiting_unlock` → lần cũ được ghi `missed` và thay bằng lần mới (không chồng hộp
+hỏi); nếu lần cũ đang `running` → lần mới `queued`.
 
 ### Settings (cài đặt)
 
@@ -203,7 +209,8 @@ lần mới (không chồng hộp hỏi).
 | language | `vi` hoặc `en`; mặc định theo ngôn ngữ Windows, không khớp thì `vi` |
 | hotkeys.emergency_stop / record_pause / record_stop | `Ctrl+Alt+Esc` / `Ctrl+Alt+P` / `Ctrl+Alt+S` |
 | budget.max_minutes / max_model_calls / max_repairs_per_step / max_step_minutes | 30 / 20 / 2 / 3 — phút chỉ đếm thời gian máy tự làm, không tính tạm dừng chờ người (FR-023) |
-| schedule.idle_minutes / ask_timeout_minutes / approval_timeout_minutes | 3 / 5 / 30 |
+| budget.manual_prompt_timeout_minutes | 60 — hạn chót yêu cầu người dùng ở lần chạy TAY (FR-024); hết hạn → `failed(approval_timeout \| stuck_timeout)` theo FR-050 |
+| schedule.idle_minutes / ask_timeout_minutes / approval_timeout_minutes | 3 / 5 / 30 (`approval_timeout_minutes` là hạn chót cho lần chạy theo lịch, FR-044) |
 | keep_runs_per_skill | 50 |
 | start_with_windows | false (lõi chỉ lưu giá trị; việc đăng ký khởi động cùng Windows thuộc spec 002) |
 

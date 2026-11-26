@@ -40,7 +40,13 @@ Mỗi dòng một sự kiện JSON. Do Recorder ghi, Compiler đọc. Bất bi�
 - Phiên khoá / màn hình UAC trong lúc ghi: không ghi sự kiện và không chụp cho tới khi trở lại desktop thường.
 - `clipboard` MUST NOT chứa nội dung bộ nhớ tạm — chỉ thao tác (`copy` | `paste` | `cut`).
 - Di chuột thuần tuý không được ghi. Sự kiện trên cửa sổ của chính `teach.exe` không được ghi.
-- `state` được ghi sau mỗi hành động khi giao diện ổn định (≤ 1,5 s), là nguồn để Compiler sinh `expect`.
+- `state` được ghi sau mỗi hành động khi giao diện ổn định (cây phần tử + tiêu đề cửa sổ đích không đổi trong 300 ms liên tiếp; chờ tối đa 1,5 s khi ghi để không làm chậm người dùng — cùng định nghĩa "ổn định" với lúc chạy, nơi chờ tối đa 5 s), là nguồn để Compiler sinh `expect`.
   `new_elements` = phần tử có trong cây cửa sổ focus sau hành động mà không có trước đó (giới hạn 50).
   `new_elements` MUST NOT chứa giá trị (Value) của ô nhập.
 - Phím liên tiếp vào cùng một phần tử được Recorder gộp thành một `type`; phím có Ctrl/Alt/Win → `hotkey`.
+
+## Ánh xạ sự kiện → bước (Compiler)
+
+- `window_focus` không tạo bước riêng: nó cập nhật `window` của bước kế tiếp. Nếu cửa sổ thuộc ứng dụng chưa mở ở đầu bản ghi, bước đầu tiên trên nó được đi kèm một bước `launch` với `process_path`.
+- `clipboard` `copy`/`paste`/`cut` → bước `hotkey` tương ứng (`Ctrl+C`/`Ctrl+V`/`Ctrl+X`) nếu do phím tắt; nếu do menu thì giữ là bước `click` (lần bấm menu).
+- `wait` không sinh tự động (người dùng tự thêm khi sửa skill).

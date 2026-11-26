@@ -33,7 +33,7 @@ steps:
       - {role: Button, name: "Lưu lại", added_by_run: 20261129-080102, pending_review: true}
     expect: [{window_title_contains: "Save As"}]
     approval: false
-    skip_if: {element_exists: {name: "Đã lưu"}}
+    skip_if: {element_exists: {role: Text, name: "Đã lưu"}}
   - id: 4
     intent: Nhập tên file
     action: type

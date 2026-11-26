@@ -8,7 +8,8 @@ language: vi
 model: {base_url: "https://llm.congty.local/v1", name: "deepseek-chat", timeout_seconds: 30,
         data_notice_accepted: true}
 hotkeys: {emergency_stop: "Ctrl+Alt+Esc", record_pause: "Ctrl+Alt+P", record_stop: "Ctrl+Alt+S"}
-budget: {max_minutes: 30, max_model_calls: 20, max_repairs_per_step: 2, max_step_minutes: 3}
+budget: {max_minutes: 30, max_model_calls: 20, max_repairs_per_step: 2, max_step_minutes: 3,
+         manual_prompt_timeout_minutes: 60}
 schedule: {idle_minutes: 3, ask_timeout_minutes: 5, approval_timeout_minutes: 30}
 keep_runs_per_skill: 50
 start_with_windows: false
@@ -60,8 +61,15 @@ Dòng đầu là header, sau đó mỗi sự kiện một dòng, dòng cuối l�
 {"type":"result","status":"succeeded","model_calls":1,"ms":15400}
 ```
 
-`rung` ∈ 0…5 theo FR-018. `model_call.request` là đúng chuỗi đã gửi (đã qua bộ lọc dữ liệu) để tái hiện
+`rung` ∈ 0…5 theo FR-018. Bước người dùng làm tay rồi chọn Tiếp tục ở prompt `stuck` mà `expect` rỗng ghi `"result":"confirmed_by_user"` (FR-024). `model_call.request` là đúng chuỗi đã gửi (đã qua bộ lọc dữ liệu) để tái hiện
 được; `request` và `response` không bao giờ chứa bí mật (SC-009).
+
+## Log lời gọi model ngoài lần chạy
+
+- `label_step` (lúc biên dịch): ghi vào `skills\<name>\label_log.jsonl`, mỗi lời gọi một dòng `model_call` cùng định dạng như trong `run.jsonl`.
+- `eval`, `probe-model`: chỉ ghi vào file kết quả (`eval\results\`), không ghi log nội dung.
+- `test_connection`: không ghi log nội dung.
+- Các lời gọi này không tính vào `model_calls` của lần chạy nào.
 
 ## Câu hỏi mẫu `eval\*.jsonl`
 
@@ -87,7 +95,7 @@ CLI của lõi, dùng [bề mặt điều khiển](./control-surface.md); không
 | `teach run <skill> [--input k=v]... [--trial] [--no-model] [--corrupt-primary] [--inject-dialog-at <step>]` | chạy skill; yêu cầu người dùng hỏi ở console; `--trial` hỏi xác nhận sẵn sàng khi xong; các cờ còn lại tạo 3 chế độ của bộ đo | 0 thành công, 1 thất bại, 2 huỷ |
 | `teach skill list\|show <skill>\|patches <skill> [--keep\|--undo <step>:<idx>]` | xem skill, duyệt tự vá | 0 |
 | `teach config set-model --url <u> --name <n>` · `teach config set-key` (đọc từ stdin, không echo) · `teach config accept-notice` · `teach secret set <key>` | cài đặt, bí mật | 0 |
-| `teach eval [--cases <file>]` | chạy bộ câu hỏi mẫu với model trong cài đặt, in tỉ lệ đúng theo loại | 0 nếu ≥ 90% |
+| `teach eval [--cases <file>] [--publish]` | chạy bộ câu hỏi mẫu với model trong cài đặt, in tỉ lệ đúng theo loại | 0 nếu ≥ 90% |
 | `teach bench <thư mục skill chuẩn> --mode 1\|2\|3` | chạy cả bộ 10 skill chuẩn ở một chế độ, in bảng kết quả | 0 nếu đạt ngưỡng |
 | `teach probe-model` | phép đo M0: giao thức, `json_schema`, phần suy nghĩ, độ trễ, 20 lần JSON một dòng | 0 nếu ≥ 19/20 |
 | `teach schedule list\|add\|rm\|history` · `teach schedule watch` | quản lý lịch; `watch` chạy vòng lịch ở console, hỏi ở console khi đến giờ | 0 |

@@ -38,11 +38,11 @@ Per-Monitor-V2 DPI aware.
 
 **Project Type**: thư viện lõi + CLI (giao diện desktop ở spec 002)
 
-**Performance Goals**: dừng khẩn cấp: không gửi thao tác sau ≤ 1 s, báo "đã dừng" ≤ 2 s (SC-003, FR-022); mỗi lần hỏi ứng dụng đích ≤ 5 s + 1 lần thử lại (FR-051); mỗi bước ≤ 3 phút thời gian máy tự làm (FR-023); gắn nhãn nền ≤ 2 phút/skill (FR-011); dung lượng trống tối thiểu 500 MB (FR-052); hook bị ngắt phát hiện ≤ 1 s (FR-053); một bước ở nấc 1 ≤ 2 s gồm chờ giao diện ổn định ("ổn định" = cây phần tử của cửa sổ đích và tiêu đề không đổi trong 300 ms liên tiếp, chờ tối đa 5 s rồi vẫn kiểm tra `expect`);
+**Performance Goals**: dừng khẩn cấp: không gửi thao tác sau ≤ 1 s, báo "đã dừng" ≤ 2 s (SC-003, FR-022); mỗi lần hỏi ứng dụng đích ≤ 5 s + 1 lần thử lại (FR-051); mỗi bước ≤ 3 phút thời gian máy tự làm (FR-023); gắn nhãn nền ≤ 2 phút/skill (FR-011); dung lượng trống tối thiểu 500 MB (FR-052); hook bị ngắt phát hiện ≤ 1 s (FR-053); một bước ở nấc 1 ≤ 2 s (p95, ứng dụng đích phản hồi bình thường; chỉ là thông tin — `teach bench` báo vượt nhưng mã thoát không phụ thuộc) gồm chờ giao diện ổn định (một định nghĩa "ổn định" cho cả ghi và chạy: cây phần tử + tiêu đề cửa sổ đích không đổi trong 300 ms liên tiếp; chờ tối đa 1,5 s khi GHI để không làm chậm người dùng, tối đa 5 s khi CHẠY rồi vẫn kiểm tra `expect`);
 ghi không làm trễ thao tác người dùng (hook trả ≤ 1 ms); mỗi lần gọi model ≤ 30 s (timeout); sự kiện trạng
 thái phát ra ≤ 100 ms sau thay đổi (để giao diện 002 đạt ≤ 1 s).
 
-**Constraints**: chỉ văn bản tới model, ≤ ~2.000 token/lần gọi; không phụ thuộc structured output/tool
+**Constraints**: chỉ văn bản tới model, tổng độ dài messages ≤ 2.000 (số ký tự ÷ 4) mỗi lần gọi (FR-030); không phụ thuộc structured output/tool
 calling; không gửi ảnh, bí mật, clipboard, văn bản đã gõ; chạy được hoàn toàn khi không có model/mạng;
 không chạy hai skill cùng lúc; mọi lần chạy theo lịch cần người dùng chọn Chạy ngay; lõi không phụ thuộc
 giao diện (dừng khẩn cấp, phím tắt ghi chạy trong lõi).
@@ -89,7 +89,7 @@ specs/001-teach-a-task/
 ├── plan.md              # file này
 ├── research.md          # Phase 0
 ├── data-model.md        # Phase 1
-├── quickstart.md        # Phase 1 — kịch bản nghiệm thu M0–M3, M5 (phần lõi)
+├── quickstart.md        # Phase 1 — kịch bản nghiệm thu M0–M5 (M4 phần lõi)
 ├── contracts/
 │   ├── control-surface.md # lệnh + sự kiện giữa lõi và giao diện 002 / CLI
 │   ├── skill-format.md
@@ -97,20 +97,26 @@ specs/001-teach-a-task/
 │   ├── model-protocol.md
 │   └── storage-files.md   # settings, schedules, run log, eval, dòng lệnh
 ├── checklists/requirements.md
-└── tasks.md             # Phase 2 (/speckit-tasks — chưa tạo)
+└── tasks.md             # Phase 2 (/speckit-tasks — đã tạo)
 ```
 
 ### Source Code (repository root)
 
 ```text
 Cargo.toml                       # workspace; plan 002 thêm thành viên app Tauri
+rust-toolchain.toml              # stable + rustfmt + clippy
+deny.toml                        # cargo deny: advisories + licenses
 crates/teach-core/
 ├── Cargo.toml                   # lib "teach_core" + bin "teach" (CLI)
-├── build.rs                     # manifest cho bin CLI (PerMonitorV2, asInvoker)
+├── build.rs                     # nhúng manifest cho bin CLI
+├── teach.exe.manifest           # PerMonitorV2, asInvoker
+├── README.md                    # build, lệnh CLI, vị trí dữ liệu, giới hạn đã biết
 ├── examples/                    # spike M0 (spike_record, spike_input, spike_ocr, spike_capture, spike_hotkeys, spike_secret, spike_probe)
 ├── assets/
 │   ├── prompts/                 # system prompt + ví dụ mẫu: pick_element, diagnose, label_step
-│   └── eval/default.jsonl       # bộ câu hỏi mẫu nhúng trong binary
+│   └── eval/
+│       ├── default.jsonl        # bộ câu hỏi mẫu nhúng trong binary
+│       └── last_result.json     # kết quả eval ≥ 90% có dấu vân tay, tạo bằng `teach eval --publish` (máy công ty)
 ├── src/
 │   ├── lib.rs
 │   ├── engine.rs                # bề mặt điều khiển: Engine (lệnh) + luồng Event (contracts/control-surface.md)
@@ -147,12 +153,14 @@ crates/teach-core/
     ├── skill_format.rs          # quy tắc hợp lệ, round-trip YAML
     ├── runner_ladder.rs         # bậc thang với UIA giả + model giả
     ├── scheduler.rs             # máy trạng thái lịch, khoá máy, bỏ lỡ, DST, không chạy khi chưa đồng ý
-    ├── engine.rs                # lệnh → sự kiện, yêu cầu người dùng chỉ nhận lựa chọn hợp lệ, độ trễ sự kiện
+    ├── engine.rs                # lựa chọn ngoài choices → invalid, busy, không có lệnh trả key (không cần runner)
+    ├── engine_run.rs            # start_run → run_state ≤ 100 ms, prompt hết hạn (lần tay 60 phút / theo lịch 30 phút), disk_full
     ├── store.rs                 # từ chối thư mục mạng/đồng bộ, ghi nguyên tử
     ├── skill_lifecycle.rs       # draft ⇄ ready, tự vá không đổi trạng thái
     ├── runner_repair.rs         # nấc 2/4, tự vá, cấm sửa chữa khi expect rỗng
     ├── eval.rs                  # chấm bộ câu hỏi mẫu (3 loại), thông báo dữ liệu
     ├── eval_gate.rs             # [[test]] test = false: chỉ chạy bằng `cargo test --test eval_gate` ở bước kiểm tra phát hành
+    ├── support/mod.rs           # FakeDesktop (bản giả của trait Desktop)
     └── fixtures/
 bench/skills/                    # 10 skill chuẩn (Notepad, Explorer, Calculator, Settings, trình duyệt, Office…)
 ```
@@ -167,7 +175,7 @@ bản thật ở `platform/`, bản giả trong `tests/`. Đây là trait duy nh
 
 | Mốc | Phạm vi | Cổng ra |
 |---|---|---|
-| M0 | Spike lõi: hook + UIA + is_password, SendInput tiếng Việt, OCR, xcap DPI, `probe-model` với DeepSeek + GLM (máy công ty) | Mọi mục **[M0]** của lõi trong research.md có kết quả ghi vào `research.md` §Kết quả M0; quyết định dự phòng được chốt |
+| M0 | Spike lõi: hook + UIA + is_password, SendInput tiếng Việt, OCR, xcap DPI, `spike_probe` (T012) với DeepSeek + GLM (máy công ty); CLI `probe-model` ở T068 | Mọi mục **[M0]** của lõi trong research.md có kết quả ghi vào `research.md` §Kết quả M0; quyết định dự phòng được chốt |
 | M1 | `trace`, `recorder`, `compiler`, `skill`, `store`, CLI `record` | quickstart §M1 |
 | M2 | `runner` nấc 0/1/3/5, `platform/*`, `engine` (lệnh/sự kiện chạy), CLI `run --no-model`, `bench --mode 1`, dừng khẩn cấp | quickstart §M2 (10/10, 0 lần gọi model, ≤ 1 s) |
 | M3 | `model`, `eval`, nấc 2/4, tự vá + duyệt tự vá, `bench --mode 2/3` | quickstart §M3 (≥ 90%, ≥ 8/10, 0 bấm sai lọt) → chọn model mặc định |
