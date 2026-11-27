@@ -170,6 +170,7 @@ Chỉ các phép đo chạy được không cần người thao tác. Mọi mụ
 | 0.14 | `LowLevelHooksTimeout` không có trong HKCU (mặc định). Cho hook ngủ 800 ms: phát hiện lệch `GetLastInputInfo` sau 377–675 ms, hồi lại 125–424 ms, 0 sự kiện mất — **chưa chứng minh Windows đã gỡ hook** (có thể chỉ là trễ). Cửa sổ `RegisterHotKey` chung luồng với hook ⇒ `WM_HOTKEY` bị chặn khi hook kẹt (3 lần đến dồn sau khi hook hết ngủ). Phân bố `lag_ms` với UIA giả 200 ms ở 20 sự kiện/s: hàng đợi tăng tuyến tính (p99 5,9 s) — tải này không dùng để chốt ngưỡng. | Chưa đạt — cần đo tiếp |
 | 0.7 | Notepad, 100 % DPI, một màn hình: `xcap` báo khung đúng DWM nhưng ảnh rộng 1901 thay vì 1906 px, chụp 1,4 s; GDI `BitBlt` đúng 1906×1018, 113 ms. Chưa đo 150 % và hai màn hình khác DPI. | Chưa đủ |
 | 0.8 | Hook cài được; `RegisterHotKey(Ctrl+Alt+Esc)` đăng ký được khi chạy riêng (lần thất bại 0x80070581 trước đó là do các spike khác chạy song song cùng đăng ký tổ hợp này). Hook LL nuốt tổ hợp trước khi tới `WM_HOTKEY`, nên hai đường không độc lập với cùng một tổ hợp. | Chưa đo 20/20 |
+| 0.6a/0.6b (tham khảo, **không** thay máy công ty) | Máy dev chỉ có gói OCR `en-US` (vi-VN không hỗ trợ, đúng R-5). `OcrEngine` gọi được từ exe unpackaged; `spike_ocr` 9/10 nút tiếng Việt khớp sau bỏ dấu ("Huỷ" không đọc được; "Gửi" khớp nhờ "Gti" d=1 — ngưỡng lỏng với nhãn ngắn), 25 ms. | Thông tin |
 | 0.1–0.5, 0.11 | Spike đã viết, chạy khởi động/thoát sạch; cần người thao tác. | Chưa đo |
 
 **Hệ quả thiết kế (D-1, D-2 đã duyệt 2026-11-27):**
