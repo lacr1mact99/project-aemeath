@@ -105,8 +105,8 @@ Thay đổi so với bản nháp gốc v0.3 §5 (`git show d6e355c:specs/001-tea
   ngôn ngữ gốc; `label_step` nhận tham số `LANGUAGE: vi|en` để trả câu ý định theo ngôn ngữ cài đặt (FR-048).
 - **Rationale**: model nhỏ thường theo chỉ dẫn định dạng tiếng Anh ổn định hơn; định dạng câu trả lời là
   JSON nên không phụ thuộc ngôn ngữ người dùng.
-- **[M0/M3]** (quickstart 0.12, máy công ty): chạy bộ câu hỏi mẫu với prompt Anh và Việt cho cả hai model; giữ
-  bản tiếng Anh trừ khi bản Việt cao hơn ≥ 5 điểm phần trăm. Kết quả ghi research.md §Kết quả M0.
+- **[M3]** (quickstart §M3, máy công ty, T080): chạy bộ câu hỏi mẫu với prompt Anh và Việt cho cả hai model; giữ
+  bản tiếng Anh trừ khi bản Việt cao hơn ≥ 5 điểm phần trăm. Cần prompt và bộ câu hỏi mẫu nên không đo được ở M0.
 
 ## R-8. Phím tắt, dừng khẩn cấp, thông điệp (giao diện → spec 002)
 

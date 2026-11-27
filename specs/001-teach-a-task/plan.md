@@ -238,7 +238,7 @@ bản thật ở `platform/`, bản giả trong `tests/`. Đây là trait duy nh
 
 | Mốc | Phạm vi | Cổng ra |
 |---|---|---|
-| M0 | Spike lõi: hook + UIA + is_password, SendInput tiếng Việt, OCR **theo kiểu phân phối** (D-3), xcap DPI, dừng khi lời gọi treo (D-1), mất hook + gán dữ liệu ghi (D-2), khoá phiên/RDP, `spike_probe` (T012) với DeepSeek + GLM và so prompt Anh–Việt (máy công ty); CLI `probe-model` ở T068 | Mọi mục **[M0]** của lõi trong research.md có kết quả ghi vào `research.md` §Kết quả M0; D-1…D-3 và quyết định dự phòng được chốt — runner phát thao tác (T040, T083–T085) và tự vá (T059–T061) chỉ bắt đầu sau đó |
+| M0 | Spike lõi: hook + UIA + is_password, SendInput tiếng Việt, OCR **theo kiểu phân phối** (D-3), xcap DPI, dừng khi lời gọi treo (D-1), mất hook + gán dữ liệu ghi (D-2), khoá phiên/RDP, `spike_probe` (T012) với DeepSeek + GLM (máy công ty); CLI `probe-model` ở T068 | **Cổng A (máy dev)**: spike input/UIA/chụp/phím tắt/dừng/mất hook đạt, D-1, D-2 chốt → mở nền tảng Windows và runner phát thao tác. **Cổng B (máy công ty)**: OCR theo kiểu phân phối (D-3) và giao thức model (0.10) → mở phần OCR và US4/M3. Đo lại các mục Dev trên máy công ty là điều kiện của cổng ra M2. So prompt Anh–Việt đo trong M3 (quickstart §M3). Kết quả ghi `research.md` §Kết quả M0 |
 | M1 | `trace`, `recorder`, `compiler`, `skill`, `store`, CLI `record` | quickstart §M1 |
 | M2 | `runner` nấc 0/1/3/5, `platform/*`, `engine` (lệnh/sự kiện chạy), CLI `run --no-model`, `bench --mode 1`, dừng khẩn cấp | quickstart §M2 (10/10, 0 lần gọi model, ≤ 1 s) |
 | M3 | `model`, `eval`, nấc 2/4, tự vá + duyệt tự vá, `bench --mode 2/3` | quickstart §M3 (≥ 90%, ≥ 8/10, 0 bấm sai lọt) → chọn model mặc định |

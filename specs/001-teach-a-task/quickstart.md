@@ -27,15 +27,24 @@ Spike kỹ thuật. Mỗi mục ghi kết quả (đạt/không, số đo, quyế
 
 **Nơi đo**: máy phát triển không thuộc mạng công ty. Cột "Máy" cho biết mục nào được phép đo ở đâu:
 **Dev** = đo trên máy phát triển được; **Cty** = bắt buộc đo trên máy công ty, trong mạng công ty (kết quả
-trên máy phát triển không có giá trị). Với mục Dev, nên đo lại trên máy công ty trước khi chốt M0 vì ảnh
-Windows của công ty có thể khác.
+trên máy phát triển không có giá trị). M0 có **hai cổng**:
 
-| # | Máy |
-|---|---|
-| 0.1, 0.4, 0.5, 0.7, 0.8, 0.13, 0.14 | Dev (đo lại trên Cty) |
-| 0.2, 0.3, 0.11 | Dev + Cty (bộ gõ, trình duyệt, app nội bộ, chính sách khoá máy/RDP của công ty) |
-| 0.6a, 0.6b | **Cty** (gói OCR và kiểu phân phối phụ thuộc ảnh Windows/chính sách của công ty) |
-| 0.10, 0.12 | **Cty** (mạng, proxy, CA, máy chủ model nội bộ) |
+- **Cổng A (M0-Dev)** — chặn nền tảng Windows (T021–T025, T027) và runner phát thao tác (T040, T083–T085): các dòng
+  0.1, 0.4, 0.5, 0.7, 0.8, 0.13, 0.14 và phần máy dev của 0.2, 0.3, 0.11; plan D-1, D-2 và `RECORD_LAG_LIMIT_MS`
+  đã chốt.
+- **Cổng B (M0-Cty)** — chặn phần dựa vào OCR (T026, nhánh OCR của T033/T039; trước cổng này `ocr_text` coi như
+  không khớp, recorder rơi về `xy_in_window` như FR-004 khi OCR quá hạn) và việc bắt đầu US4/M3 (T053 trở đi):
+  0.6a, 0.6b (plan D-3), 0.10.
+- **Đo lại trên máy công ty** các dòng Dev và phần Cty của 0.2, 0.3, 0.11: không chặn task nào, nhưng là điều kiện
+  bắt buộc của checkpoint M2 (ảnh Windows công ty có thể khác; lệch → sửa `recorder`/`input` trước khi M2 đạt).
+- 0.12 (so prompt Anh–Việt) cần prompt và bộ câu hỏi mẫu nên đo trong M3 (§M3, T080), không thuộc cổng nào.
+
+| # | Máy | Cổng |
+|---|---|---|
+| 0.1, 0.4, 0.5, 0.7, 0.8, 0.13, 0.14 | Dev (đo lại trên Cty trước checkpoint M2) | A |
+| 0.2, 0.3, 0.11 | Dev (cổng A) + Cty (bộ gõ, trình duyệt, app nội bộ, chính sách khoá máy/RDP — trước checkpoint M2) | A |
+| 0.6a, 0.6b | **Cty** (gói OCR và kiểu phân phối phụ thuộc ảnh Windows/chính sách của công ty) | B |
+| 0.10 | **Cty** (mạng, proxy, CA, máy chủ model nội bộ) | B |
 
 | # | Kiểm tra | Đạt khi |
 |---|---|---|
@@ -50,7 +59,6 @@ Windows của công ty có thể khác.
 | 0.8 | Phím tắt dừng khẩn cấp và tạm dừng/dừng ghi qua hook khi cửa sổ khác đang focus (kể cả ứng dụng toàn màn hình) | nhận được 20/20 lần; tổ hợp không lọt vào ứng dụng đích |
 | 0.10 | `cargo run --example spike_probe` (T012) với DeepSeek, rồi với GLM — từ M3 dùng `teach probe-model` (T068) | in ra: tương thích OpenAI?, `json_schema`?, phần suy nghĩ ở đâu, p50/p95 độ trễ, giới hạn ngữ cảnh; **≥ 19/20** câu JSON một dòng hợp lệ (mã thoát 0) |
 | 0.11 | `spike_session` (T090): khoá/mở khoá máy, UAC, ngắt/nối lại RDP, thu nhỏ cửa sổ RDP ở máy khách — mỗi ca 5 lần, cả lúc ghi và lúc chạy | 100% ca khoá/UAC/RDP ngắt được phát hiện và tạm dừng trước thao tác kế tiếp; ca RDP thu nhỏ ghi lại hành vi (giới hạn đã biết) |
-| 0.12 | Prompt Anh và Việt trên bộ câu hỏi mẫu, cả hai model (R-7) | ghi điểm 4 tổ hợp; chọn tiếng Việt chỉ khi cao hơn ≥ 5 điểm % |
 | 0.13 | `spike_stop` (T088) trên `bench_target` treo theo lệnh: đọc UIA treo, `Invoke` treo, `SetValue` treo, SendInput liên tục (plan D-1) — mỗi ca 5 lần | 20/20 không lần gửi mới nào qua `Gate` sau ≤ 1 s; ghi có/không tác dụng muộn và độ trễ; chốt dùng `Invoke`/`SetValue` hay SendInput mặc định |
 | 0.14 | `spike_hookloss` (T089): ép mất hook khi máy rảnh, input liên tục, đổi focus giữa lúc gõ, 20 lần bấm/giây; đo `lag_ms` của recorder với UIA chậm (plan D-2) | ghi thời gian phát hiện/cài lại; `RegisterHotKey` dừng được 20/20 trong lúc hook mất; chốt `RECORD_LAG_LIMIT_MS` |
 
@@ -101,6 +109,10 @@ teach bench bench\skills --mode 1      # model tắt, giao diện không đổi
   cú bấm nào lọt vào hộp thoại.
 
 ## M3
+
+**Máy công ty.** So prompt Anh–Việt (R-7, trước đây là dòng M0 0.12): chạy `teach eval` với prompt Anh và Việt cho
+cả hai model; ghi điểm 4 tổ hợp vào research.md; chọn tiếng Việt chỉ khi cao hơn ≥ 5 điểm %. Làm trước khi chạy
+bench chế độ 2/3 để bench dùng đúng prompt đã chọn.
 
 ```powershell
 teach eval                                    # bộ mặc định, KHÔNG --publish; kết quả eval\results\<model>-*.json
