@@ -123,5 +123,9 @@ Kịch bản thật trên máy với khay, hộp hỏi, thông báo Windows: qui
 | Skill A đang chạy khi lịch của skill B đến giờ | B `queued`, chỉ hỏi sau khi A xong |
 | Sửa bước của skill đang có lịch | skill về `draft`, lịch tạm ngưng có lý do; xác nhận lại → lịch hoạt động lại |
 | Đổi giờ mùa hè/đông (DST) giữa hai lần | lần kế tiếp đúng theo giờ địa phương, không kích hoạt trùng |
+| Máy ngủ qua giờ hẹn, thức trong / quá `wait_window_minutes` | `asking` / `missed`; không đánh thức máy; lần cũ hơn chỉ `missed` |
+| Chỉnh đồng hồ lùi 1 giờ rồi tiến 3 giờ | không có hai Occurrence cùng `due`; không chạy bù hàng loạt |
+| Trả lời `run_now` khi skill vừa về `draft` | không `run_started`; lịch sử `skipped` (`skill_not_ready`) |
+| Đến giờ, máy rảnh, mở khoá | `prompt(schedule_ask)` phát ≤ 30 s sau `due` (đồng hồ giả) |
 
 Trên mọi kịch bản: 0 `run_started` khi chưa có lựa chọn `run_now` cho lần đó (SC-008).

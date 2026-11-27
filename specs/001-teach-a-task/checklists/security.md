@@ -10,71 +10,71 @@
 
 ## Mô hình mối đe doạ & giả định
 
-- [ ] CHK001 - Spec có mô hình mối đe doạ được ghi rõ không: tác nhân nào nằm trong phạm vi (nội dung độc trong ứng dụng đích, máy chủ model tò mò/bị xâm nhập, người nhìn trộm màn hình, người dùng khác trên cùng máy, quản trị IT truy cập hồ sơ người dùng) và tác nhân nào ngoài phạm vi (mã độc chạy cùng quyền người dùng)? [Gap]
-- [ ] CHK002 - Giả định "mọi tiến trình cùng quyền người dùng đều đọc được thư mục dữ liệu và Credential Manager" có được ghi thành giả định, kèm hệ quả cho log/ảnh/bí mật không? [Assumption, Gap]
-- [ ] CHK003 - Spec có nêu quy định bảo vệ dữ liệu áp dụng (chính sách dữ liệu của công ty, quy định về dữ liệu cá nhân như Nghị định 13/2023/NĐ-CP) đối với ảnh chụp và log có thể chứa dữ liệu cá nhân của khách hàng không? [Gap, Compliance]
-- [ ] CHK004 - Có yêu cầu rà soát lỗ hổng phụ thuộc (dependency) trước phát hành, tương ứng Nguyên tắc VII "phụ thuộc phải có lý do", không? [Gap, Non-Functional]
+- [x] CHK001 - Spec có mô hình mối đe doạ được ghi rõ không: tác nhân nào nằm trong phạm vi (nội dung độc trong ứng dụng đích, máy chủ model tò mò/bị xâm nhập, người nhìn trộm màn hình, người dùng khác trên cùng máy, quản trị IT truy cập hồ sơ người dùng) và tác nhân nào ngoài phạm vi (mã độc chạy cùng quyền người dùng)? [Gap]
+- [x] CHK002 - Giả định "mọi tiến trình cùng quyền người dùng đều đọc được thư mục dữ liệu và Credential Manager" có được ghi thành giả định, kèm hệ quả cho log/ảnh/bí mật không? [Assumption, Gap]
+- [x] CHK003 - Spec có nêu quy định bảo vệ dữ liệu áp dụng (chính sách dữ liệu của công ty, quy định về dữ liệu cá nhân như Nghị định 13/2023/NĐ-CP) đối với ảnh chụp và log có thể chứa dữ liệu cá nhân của khách hàng không? [Gap, Compliance]
+- [x] CHK004 - Có yêu cầu rà soát lỗ hổng phụ thuộc (dependency) trước phát hành, tương ứng Nguyên tắc VII "phụ thuộc phải có lý do", không? [Gap, Non-Functional]
 
 ## Bí mật & API key
 
-- [ ] CHK005 - Yêu cầu có quy định rằng ngay trước khi gõ giá trị bí mật, cửa sổ đang focus và phần tử đích phải được kiểm tra lại khớp với bước (và huỷ gõ nếu không khớp), để bí mật không bị gõ vào ứng dụng khác khi focus bị cướp không? [Gap, Spec §FR-016, §FR-018]
-- [ ] CHK006 - Có quy định bí mật chỉ được gõ vào ô được đánh dấu mật khẩu, hoặc ngoại lệ (ô token/PIN không đánh dấu) được xử lý thế nào? [Gap, Spec §FR-016]
-- [ ] CHK007 - Có yêu cầu che ảnh chụp lúc chạy (ảnh trước/sau, ảnh "kẹt") ở bước nhập bí mật khi ô đích không tự che ký tự không? FR-006 chỉ nói về lúc ghi. [Gap, Spec §FR-006, §FR-026]
-- [ ] CHK008 - Vòng đời bí mật có được định nghĩa không: tạo, thay, xoá; xoá skill có xoá bí mật chỉ skill đó dùng không; hai skill dùng chung tên khoá thì sao? [Gap, Spec §FR-016]
-- [ ] CHK009 - Có yêu cầu về thời gian giá trị bí mật / API key nằm trong bộ nhớ (xoá sau khi dùng, không đưa vào thông báo lỗi, không vào dump khi crash) không, hay được ghi là ngoài phạm vi? [Gap, Non-Functional]
-- [ ] CHK010 - FR-035 ("khoá chỉ trong kho bí mật") và SC-009 có nhất quán với mọi đường ra của lõi: log lỗi HTTP, thông điệp lỗi trả về bề mặt điều khiển, kết quả `probe-model`? [Consistency, Spec §FR-035, §SC-009]
+- [x] CHK005 - Yêu cầu có quy định rằng ngay trước khi gõ giá trị bí mật, cửa sổ đang focus và phần tử đích phải được kiểm tra lại khớp với bước (và huỷ gõ nếu không khớp), để bí mật không bị gõ vào ứng dụng khác khi focus bị cướp không? [Gap, Spec §FR-016, §FR-018]
+- [x] CHK006 - Có quy định bí mật chỉ được gõ vào ô được đánh dấu mật khẩu, hoặc ngoại lệ (ô token/PIN không đánh dấu) được xử lý thế nào? [Gap, Spec §FR-016]
+- [x] CHK007 - Có yêu cầu che ảnh chụp lúc chạy (ảnh trước/sau, ảnh "kẹt") ở bước nhập bí mật khi ô đích không tự che ký tự không? FR-006 chỉ nói về lúc ghi. [Gap, Spec §FR-006, §FR-026]
+- [x] CHK008 - Vòng đời bí mật có được định nghĩa không: tạo, thay, xoá; xoá skill có xoá bí mật chỉ skill đó dùng không; hai skill dùng chung tên khoá thì sao? [Gap, Spec §FR-016]
+- [x] CHK009 - Có yêu cầu về thời gian giá trị bí mật / API key nằm trong bộ nhớ (xoá sau khi dùng, không đưa vào thông báo lỗi, không vào dump khi crash) không, hay được ghi là ngoài phạm vi? [Gap, Non-Functional]
+- [x] CHK010 - FR-035 ("khoá chỉ trong kho bí mật") và SC-009 có nhất quán với mọi đường ra của lõi: log lỗi HTTP, thông điệp lỗi trả về bề mặt điều khiển, kết quả `probe-model`? [Consistency, Spec §FR-035, §SC-009]
 
 ## Ghi: ô mật khẩu & dữ liệu nhạy cảm
 
-- [ ] CHK011 - Spec có nêu cách xử lý khi không xác định được ô đang focus có phải ô mật khẩu không? Hiện quy tắc "coi như bí mật" chỉ nằm trong research R-4, chưa có trong FR-006. [Consistency, Spec §FR-006]
-- [ ] CHK012 - Có yêu cầu cho dữ liệu nhạy cảm nằm ngoài ô mật khẩu (số thẻ, OTP, mã nhân viên): người dùng có công cụ xoá/che đoạn văn bản và ảnh trong bản ghi sau khi ghi không? [Gap, Spec §FR-006]
-- [ ] CHK013 - Phạm vi ảnh chụp có được định nghĩa không (chỉ cửa sổ đích hay toàn màn hình)? Toàn màn hình sẽ thu cả cửa sổ chat, thông báo, ứng dụng không liên quan. [Ambiguity, Spec §FR-003]
-- [ ] CHK014 - Có yêu cầu tự tạm dừng ghi khi phiên bị khoá, khi màn hình UAC/secure desktop xuất hiện, hoặc khi người dùng chuyển sang ứng dụng nằm trong danh sách loại trừ không? [Gap, Spec §FR-001]
-- [ ] CHK015 - Ngữ nghĩa phát lại của sự kiện bộ nhớ tạm (dán) có được định nghĩa không? Phát lại "dán" sẽ dán bất cứ thứ gì đang có trong clipboard lúc chạy, có thể là dữ liệu sai hoặc nhạy cảm. [Gap, Spec §FR-002]
-- [ ] CHK016 - Có yêu cầu giữ/xoá bản ghi gốc (trace) không? FR-026 chỉ giới hạn log lần chạy; bản ghi chứa ảnh mọi thao tác hiện không có quy định giữ. [Gap, Spec §FR-026]
+- [x] CHK011 - Spec có nêu cách xử lý khi không xác định được ô đang focus có phải ô mật khẩu không? Hiện quy tắc "coi như bí mật" chỉ nằm trong research R-4, chưa có trong FR-006. [Consistency, Spec §FR-006]
+- [x] CHK012 - Có yêu cầu cho dữ liệu nhạy cảm nằm ngoài ô mật khẩu (số thẻ, OTP, mã nhân viên): người dùng có công cụ xoá/che đoạn văn bản và ảnh trong bản ghi sau khi ghi không? [Gap, Spec §FR-006]
+- [x] CHK013 - Phạm vi ảnh chụp có được định nghĩa không (chỉ cửa sổ đích hay toàn màn hình)? Toàn màn hình sẽ thu cả cửa sổ chat, thông báo, ứng dụng không liên quan. [Ambiguity, Spec §FR-003]
+- [x] CHK014 - Có yêu cầu tự tạm dừng ghi khi phiên bị khoá, khi màn hình UAC/secure desktop xuất hiện, hoặc khi người dùng chuyển sang ứng dụng nằm trong danh sách loại trừ không? [Gap, Spec §FR-001]
+- [x] CHK015 - Ngữ nghĩa phát lại của sự kiện bộ nhớ tạm (dán) có được định nghĩa không? Phát lại "dán" sẽ dán bất cứ thứ gì đang có trong clipboard lúc chạy, có thể là dữ liệu sai hoặc nhạy cảm. [Gap, Spec §FR-002]
+- [x] CHK016 - Có yêu cầu giữ/xoá bản ghi gốc (trace) không? FR-026 chỉ giới hạn log lần chạy; bản ghi chứa ảnh mọi thao tác hiện không có quy định giữ. [Gap, Spec §FR-026]
 
 ## Dữ liệu gửi máy chủ model
 
-- [ ] CHK017 - FR-033/SC-009 ("không gửi nội dung đã gõ") có mâu thuẫn với FR-030 (được gửi tiêu đề cửa sổ, tên phần tử) không, khi tiêu đề cửa sổ hoặc tên phần tử chứa đúng văn bản người dùng vừa gõ (ví dụ "BaoCao-KHACH-ABC.txt - Notepad", hay ô có Name trùng Value)? [Conflict, Spec §FR-030, §FR-033, §SC-009]
-- [ ] CHK018 - Nếu chấp nhận gửi tiêu đề/tên phần tử, có yêu cầu lọc (bỏ chuỗi trùng với giá trị tham số, văn bản đã gõ, bí mật) trước khi gửi không, và SC-009 có được viết lại cho đo được không? [Gap, Measurability, Spec §SC-009]
-- [ ] CHK019 - Có yêu cầu bắt buộc kết nối mã hoá tới máy chủ model và cấm tắt kiểm tra chứng chỉ không? Spec hiện không nói gì về việc dùng địa chỉ không mã hoá. [Gap, Spec §FR-035]
-- [ ] CHK020 - Khi đổi địa chỉ máy chủ model hoặc tên model, thông báo dữ liệu (FR-037) có phải xác nhận lại không? [Gap, Spec §FR-037]
-- [ ] CHK021 - Mối đe doạ "tiêm lệnh qua nội dung màn hình" (tên phần tử/văn bản trong ứng dụng đích hoặc trang web cố tình hướng model chọn sai, hay giả một hộp thoại để model chọn `dismiss`) có được nêu và gắn với biện pháp giảm thiểu trong yêu cầu không? [Gap, Spec §FR-028, §FR-029]
-- [ ] CHK022 - Có yêu cầu giới hạn kích thước và thời gian của câu trả lời model (câu trả lời rất dài hoặc treo) không, ngoài timeout 30 giây? [Gap, Spec §FR-031, §FR-032]
-- [ ] CHK023 - Có quy định bộ câu hỏi mẫu do người dùng thêm và `probe-model` chỉ được chứa dữ liệu giả/đã làm sạch, không lấy nguyên log lần chạy thật không? [Gap, Spec §FR-036]
+- [x] CHK017 - FR-033/SC-009 ("không gửi nội dung đã gõ") có mâu thuẫn với FR-030 (được gửi tiêu đề cửa sổ, tên phần tử) không, khi tiêu đề cửa sổ hoặc tên phần tử chứa đúng văn bản người dùng vừa gõ (ví dụ "BaoCao-KHACH-ABC.txt - Notepad", hay ô có Name trùng Value)? [Conflict, Spec §FR-030, §FR-033, §SC-009]
+- [x] CHK018 - Nếu chấp nhận gửi tiêu đề/tên phần tử, có yêu cầu lọc (bỏ chuỗi trùng với giá trị tham số, văn bản đã gõ, bí mật) trước khi gửi không, và SC-009 có được viết lại cho đo được không? [Gap, Measurability, Spec §SC-009]
+- [x] CHK019 - Có yêu cầu bắt buộc kết nối mã hoá tới máy chủ model và cấm tắt kiểm tra chứng chỉ không? Spec hiện không nói gì về việc dùng địa chỉ không mã hoá. [Gap, Spec §FR-035]
+- [x] CHK020 - Khi đổi địa chỉ máy chủ model hoặc tên model, thông báo dữ liệu (FR-037) có phải xác nhận lại không? [Gap, Spec §FR-037]
+- [x] CHK021 - Mối đe doạ "tiêm lệnh qua nội dung màn hình" (tên phần tử/văn bản trong ứng dụng đích hoặc trang web cố tình hướng model chọn sai, hay giả một hộp thoại để model chọn `dismiss`) có được nêu và gắn với biện pháp giảm thiểu trong yêu cầu không? [Gap, Spec §FR-028, §FR-029]
+- [x] CHK022 - Có yêu cầu giới hạn kích thước và thời gian của câu trả lời model (câu trả lời rất dài hoặc treo) không, ngoài timeout 30 giây? [Gap, Spec §FR-031, §FR-032]
+- [x] CHK023 - Có quy định bộ câu hỏi mẫu do người dùng thêm và `probe-model` chỉ được chứa dữ liệu giả/đã làm sạch, không lấy nguyên log lần chạy thật không? [Gap, Spec §FR-036]
 
 ## Log, ảnh & lưu trữ cục bộ
 
-- [ ] CHK024 - FR-007 ("chỉ lưu trên máy") có nhất quán với thư mục dữ liệu mặc định trong hồ sơ người dùng không? Thư mục Roaming hoặc thư mục được đồng bộ (OneDrive/Known Folder Move, roaming profile của công ty) có thể đẩy ảnh và log lên máy chủ. [Conflict, Spec §FR-007, §Assumptions-Lưu trữ]
-- [ ] CHK025 - Có ràng buộc vị trí khi người dùng đổi thư mục dữ liệu không (cấm hoặc cảnh báo ổ mạng, thư mục đồng bộ đám mây)? [Gap, Spec §FR-038]
-- [ ] CHK026 - Có yêu cầu quyền truy cập thư mục dữ liệu (chỉ tài khoản người dùng hiện tại) không, hay được ghi là dựa vào mặc định của hệ điều hành? [Gap, Non-Functional]
-- [ ] CHK027 - Xoá skill có xoá cả log lần chạy, ảnh, bản ghi gốc và lịch liên quan không? Hành vi này có được định nghĩa không? [Gap, Spec §FR-026]
-- [ ] CHK028 - Tiêu chí "log không chứa bí mật" có bao phủ mọi loại file lõi ghi ra (run.jsonl, events.jsonl, schedule_history, ảnh, file tạm, log crash) không? [Coverage, Spec §SC-009]
+- [x] CHK024 - FR-007 ("chỉ lưu trên máy") có nhất quán với thư mục dữ liệu mặc định trong hồ sơ người dùng không? Thư mục Roaming hoặc thư mục được đồng bộ (OneDrive/Known Folder Move, roaming profile của công ty) có thể đẩy ảnh và log lên máy chủ. [Conflict, Spec §FR-007, §Assumptions-Lưu trữ]
+- [x] CHK025 - Có ràng buộc vị trí khi người dùng đổi thư mục dữ liệu không (cấm hoặc cảnh báo ổ mạng, thư mục đồng bộ đám mây)? [Gap, Spec §FR-038]
+- [x] CHK026 - Có yêu cầu quyền truy cập thư mục dữ liệu (chỉ tài khoản người dùng hiện tại) không, hay được ghi là dựa vào mặc định của hệ điều hành? [Gap, Non-Functional]
+- [x] CHK027 - Xoá skill có xoá cả log lần chạy, ảnh, bản ghi gốc và lịch liên quan không? Hành vi này có được định nghĩa không? [Gap, Spec §FR-026]
+- [x] CHK028 - Tiêu chí "log không chứa bí mật" có bao phủ mọi loại file lõi ghi ra (run.jsonl, events.jsonl, schedule_history, ảnh, file tạm, log crash) không? [Coverage, Spec §SC-009]
 
 ## Ranh giới lõi ⇄ giao diện & dòng lệnh
 
-- [ ] CHK029 - FR-047 có quy định lõi kiểm tra hợp lệ mọi lệnh từ bề mặt điều khiển như đầu vào không tin cậy, đúng với Constitution v1.1.0 (ranh giới tin cậy), không? [Consistency, Spec §FR-047]
-- [ ] CHK030 - Có yêu cầu rằng không lệnh nào trả ra API key, giá trị bí mật hay nội dung đã gõ trong ô mật khẩu không? Hiện điều này chỉ có trong contract, chưa thành FR. [Traceability, Spec §FR-047]
-- [ ] CHK031 - Hành vi của CLI khi không có người trả lời (chạy trong script, stdin đóng, không có console) có được định nghĩa là "đóng an toàn" (yêu cầu phê duyệt/kẹt → thất bại, không bao giờ tự đồng ý) không? [Gap, Spec §FR-021, §FR-047]
-- [ ] CHK032 - FR-025 ("không chạy hai skill cùng lúc") có áp dụng xuyên tiến trình không (CLI và giao diện cùng chạy lõi, hai CLI cùng lúc)? [Ambiguity, Spec §FR-025]
-- [ ] CHK033 - File skill/lịch/cài đặt có được coi là đáng tin không? Nếu không, có yêu cầu kiểm tra lại khi tải (ví dụ hành động `launch` với đường dẫn bị sửa, lịch gắn skill nháp được thêm tay) không? [Gap, Assumption, Spec §FR-013, §FR-039]
+- [x] CHK029 - FR-047 có quy định lõi kiểm tra hợp lệ mọi lệnh từ bề mặt điều khiển như đầu vào không tin cậy, đúng với Constitution v1.1.0 (ranh giới tin cậy), không? [Consistency, Spec §FR-047]
+- [x] CHK030 - Có yêu cầu rằng không lệnh nào trả ra API key, giá trị bí mật hay nội dung đã gõ trong ô mật khẩu không? Hiện điều này chỉ có trong contract, chưa thành FR. [Traceability, Spec §FR-047]
+- [x] CHK031 - Hành vi của CLI khi không có người trả lời (chạy trong script, stdin đóng, không có console) có được định nghĩa là "đóng an toàn" (yêu cầu phê duyệt/kẹt → thất bại, không bao giờ tự đồng ý) không? [Gap, Spec §FR-021, §FR-047]
+- [x] CHK032 - FR-025 ("không chạy hai skill cùng lúc") có áp dụng xuyên tiến trình không (CLI và giao diện cùng chạy lõi, hai CLI cùng lúc)? [Ambiguity, Spec §FR-025]
+- [x] CHK033 - File skill/lịch/cài đặt có được coi là đáng tin không? Nếu không, có yêu cầu kiểm tra lại khi tải (ví dụ hành động `launch` với đường dẫn bị sửa, lịch gắn skill nháp được thêm tay) không? [Gap, Assumption, Spec §FR-013, §FR-039]
 
 ## An toàn khi thao tác trên máy thật
 
-- [ ] CHK034 - Có yêu cầu kiểm tra lại cửa sổ đang focus ngay trước mỗi lần gửi chuột/phím (không chỉ ở nấc 0 đầu bước) để không thao tác vào cửa sổ khác bật lên giữa chừng không? [Gap, Spec §FR-018]
-- [ ] CHK035 - Trạng thái "đã dừng" sau dừng khẩn cấp có được định nghĩa đầy đủ không: nhả mọi phím/nút chuột đang giữ (Ctrl/Shift/Alt bị kẹt), không còn thao tác nào xếp hàng, không có gì tự chạy tiếp? [Clarity, Spec §FR-022, §SC-003]
-- [ ] CHK036 - Lựa chọn `retry` của chẩn đoán có được giới hạn cho hành động không lặp lại được không (ví dụ bấm "Gửi" hai lần khi kết quả thật ra đã xảy ra nhưng điều kiện kết quả kiểm tra sai)? [Gap, Spec §FR-028]
-- [ ] CHK037 - Bước có điều kiện kết quả rỗng (data-model cho phép "rỗng = chỉ cần hành động không lỗi") có bị cấm dùng sửa chữa bằng model và tự vá không? Nếu không, lựa chọn của model ở bước đó không được xác minh, trái Nguyên tắc III và SC-005. [Conflict, Spec §FR-020, §FR-027, §SC-005]
-- [ ] CHK038 - Có yêu cầu xử lý khi máy bị khoá hoặc màn hình UAC xuất hiện giữa lần chạy (tạm dừng hoặc thất bại, không gửi phím vào màn hình khoá) không? [Gap, Spec §FR-022]
-- [ ] CHK039 - Giới hạn với ứng dụng chạy quyền quản trị (Windows chặn thao tác) có được đưa từ research R-11 vào spec như một hành vi đã định (lý do lỗi rõ, không tự nâng quyền) không? [Gap, Spec §Edge Cases]
-- [ ] CHK040 - Có yêu cầu gợi ý đánh dấu phê duyệt cho bước có khả năng gây hậu quả khó hoàn tác (gửi, xoá, thanh toán, phím tắt đóng/xoá) không, hay được ghi rõ là hoàn toàn do người dùng quyết? [Gap, Spec §FR-021]
+- [x] CHK034 - Có yêu cầu kiểm tra lại cửa sổ đang focus ngay trước mỗi lần gửi chuột/phím (không chỉ ở nấc 0 đầu bước) để không thao tác vào cửa sổ khác bật lên giữa chừng không? [Gap, Spec §FR-018]
+- [x] CHK035 - Trạng thái "đã dừng" sau dừng khẩn cấp có được định nghĩa đầy đủ không: nhả mọi phím/nút chuột đang giữ (Ctrl/Shift/Alt bị kẹt), không còn thao tác nào xếp hàng, không có gì tự chạy tiếp? [Clarity, Spec §FR-022, §SC-003]
+- [x] CHK036 - Lựa chọn `retry` của chẩn đoán có được giới hạn cho hành động không lặp lại được không (ví dụ bấm "Gửi" hai lần khi kết quả thật ra đã xảy ra nhưng điều kiện kết quả kiểm tra sai)? [Gap, Spec §FR-028]
+- [x] CHK037 - Bước có điều kiện kết quả rỗng (data-model cho phép "rỗng = chỉ cần hành động không lỗi") có bị cấm dùng sửa chữa bằng model và tự vá không? Nếu không, lựa chọn của model ở bước đó không được xác minh, trái Nguyên tắc III và SC-005. [Conflict, Spec §FR-020, §FR-027, §SC-005]
+- [x] CHK038 - Có yêu cầu xử lý khi máy bị khoá hoặc màn hình UAC xuất hiện giữa lần chạy (tạm dừng hoặc thất bại, không gửi phím vào màn hình khoá) không? [Gap, Spec §FR-022]
+- [x] CHK039 - Giới hạn với ứng dụng chạy quyền quản trị (Windows chặn thao tác) có được đưa từ research R-11 vào spec như một hành vi đã định (lý do lỗi rõ, không tự nâng quyền) không? [Gap, Spec §Edge Cases]
+- [x] CHK040 - Có yêu cầu gợi ý đánh dấu phê duyệt cho bước có khả năng gây hậu quả khó hoàn tác (gửi, xoá, thanh toán, phím tắt đóng/xoá) không, hay được ghi rõ là hoàn toàn do người dùng quyết? [Gap, Spec §FR-021]
 
 ## Lịch không tự chạy
 
-- [ ] CHK041 - Có quy định lựa chọn "Chạy ngay" chỉ có hiệu lực cho đúng một lần kích hoạt đó (không mang sang lần sau, không còn hiệu lực sau khi lần đó hết hạn hoặc bị thay) không? [Clarity, Spec §FR-041]
-- [ ] CHK042 - Có yêu cầu lõi kiểm tra lại điều kiện ngay lúc bắt đầu chạy sau khi được đồng ý (skill vẫn "sẵn sàng", máy vẫn mở khoá, không có lần chạy khác) không? [Gap, Spec §FR-039, §FR-041]
-- [ ] CHK043 - Hành vi khi đồng hồ hệ thống bị chỉnh lùi/tiến hoặc đổi múi giờ (kích hoạt trùng, kích hoạt hàng loạt lần bị lỡ) có được định nghĩa không? [Edge Case, Gap, Spec §FR-043]
-- [ ] CHK044 - SC-008 có đo được bằng một phương pháp ghi rõ (mô phỏng đồng hồ/khoá máy với số kịch bản tối thiểu) không, hay chỉ là "mọi phép thử"? [Measurability, Spec §SC-008]
+- [x] CHK041 - Có quy định lựa chọn "Chạy ngay" chỉ có hiệu lực cho đúng một lần kích hoạt đó (không mang sang lần sau, không còn hiệu lực sau khi lần đó hết hạn hoặc bị thay) không? [Clarity, Spec §FR-041]
+- [x] CHK042 - Có yêu cầu lõi kiểm tra lại điều kiện ngay lúc bắt đầu chạy sau khi được đồng ý (skill vẫn "sẵn sàng", máy vẫn mở khoá, không có lần chạy khác) không? [Gap, Spec §FR-039, §FR-041]
+- [x] CHK043 - Hành vi khi đồng hồ hệ thống bị chỉnh lùi/tiến hoặc đổi múi giờ (kích hoạt trùng, kích hoạt hàng loạt lần bị lỡ) có được định nghĩa không? [Edge Case, Gap, Spec §FR-043]
+- [x] CHK044 - SC-008 có đo được bằng một phương pháp ghi rõ (mô phỏng đồng hồ/khoá máy với số kịch bản tối thiểu) không, hay chỉ là "mọi phép thử"? [Measurability, Spec §SC-008]
 
 ## Notes
 

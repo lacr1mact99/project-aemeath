@@ -8,7 +8,8 @@ Rust cụ thể (`Engine` + `Receiver<Event>`) và cách ánh xạ sang lệnh/s
 
 1. Không có lệnh nào cho phép: tự phê duyệt, chạy lịch không qua `answer_prompt(.., run_now)`, đọc API key,
    đọc giá trị bí mật, đọc nội dung đã gõ của ô mật khẩu, gọi model tuỳ ý.
-2. Lệnh có tác dụng phụ trả lỗi có mã (`invalid`, `busy`, `not_found`, `not_ready`, `model_*`, `io`) kèm
+2. Mọi lệnh và tham số là đầu vào không tin cậy: lõi kiểm tra hợp lệ trước khi làm, không hợp lệ → lỗi, trạng
+   thái không đổi (FR-047). Lệnh có tác dụng phụ trả lỗi có mã (`invalid`, `busy`, `not_found`, `not_ready`, `model_*`, `io`) kèm
    thông điệp theo ngôn ngữ cài đặt; không panic xuyên ranh giới.
 3. Mọi thay đổi trạng thái chạy/ghi/lịch đều phát sự kiện ≤ 100 ms sau khi xảy ra.
 4. Dừng khẩn cấp không đi qua bề mặt này (hook trong lõi); `stop_run` chỉ là thêm một đường.
@@ -17,10 +18,10 @@ Rust cụ thể (`Engine` + `Receiver<Event>`) và cách ánh xạ sang lệnh/s
 
 | Nhóm | Lệnh | Ghi chú |
 |---|---|---|
-| Ghi | `start_recording(goal)` · `pause_recording()` · `resume_recording()` · `stop_recording() -> SkillName \| NoSteps` | `busy` nếu đang chạy skill (FR-025) |
-| Skill | `list_skills() -> [SkillSummary]` · `get_skill(name) -> Skill` · `save_skill(name, Skill) -> Ok \| [FieldError]` · `delete_skill(name)` · `step_image(name, step, before\|after) -> path` | `save_skill` kiểm tra hợp lệ (FR-014), tự đổi `ready → draft` nếu bước đổi (FR-017) và trả `status_changed` |
+| Ghi | `start_recording(goal)` · `pause_recording()` · `resume_recording()` · `stop_recording() -> SkillName \| NoSteps` | `busy` nếu đang chạy skill, kể cả ở tiến trình khác trong cùng phiên (FR-025); biên dịch xong phát prompt `trace_cleanup` (FR-054) |
+| Skill | `list_skills() -> [SkillSummary]` · `get_skill(name) -> Skill` · `save_skill(name, Skill) -> Ok \| [FieldError]` · `delete_skill(name)` (xoá cả trace, runs, label_log, lịch — FR-014) · `delete_trace(name)` (xoá trace gốc của skill — FR-054) · `step_image(name, step, before\|after) -> path` | `save_skill` kiểm tra hợp lệ (FR-014), tự đổi `ready → draft` nếu bước đổi (FR-017) và trả `status_changed` |
 | Tự vá | `pending_patches(name) -> [Patch]` · `keep_patch(name, step, idx)` · `undo_patch(name, step, idx)` | không đổi `status` (FR-027) |
-| Chạy | `start_run(name, inputs, trigger) -> RunId` (trả `busy` khi còn lần chạy ở `running`/`paused`/`stopping` — gồm lần chạy vừa huỷ mà lời gọi đang dở chưa trả về, tối đa ~30 s) · `stop_run()` · `answer_prompt(prompt_id, choice)` · `confirm_trial(run_id, ok)` · `list_runs(name) -> [RunSummary]` · `get_run_log(name, run_id) -> [RunLogLine]` | `start_run` thiếu input → `invalid` kèm danh sách thiếu |
+| Chạy | `start_run(name, inputs, trigger) -> RunId` (trả `busy` khi đang ghi, hoặc còn lần chạy ở `running`/`paused`/`stopping` ở bất kỳ tiến trình nào dùng lõi trong cùng phiên — gồm lần chạy vừa huỷ mà lời gọi đang dở chưa trả về, tối đa ~30 s) · `stop_run()` · `answer_prompt(prompt_id, choice)` · `confirm_trial(run_id, ok)` · `list_runs(name) -> [RunSummary]` · `get_run_log(name, run_id) -> [RunLogLine]` | `start_run` thiếu input → `invalid` kèm danh sách thiếu |
 | Bí mật | `set_secret(key, value)` · `delete_secret(key)` · `secret_exists(key) -> bool` | chỉ ghi; giá trị không bao giờ đi ra |
 | Cài đặt | `get_settings() -> Settings` (không có key) · `save_settings(Settings) -> Ok \| [FieldError]` · `set_api_key(value)` · `api_key_set() -> bool` · `data_notice() -> Text` · `accept_data_notice()` | lõi từ chối gọi model khi notice chưa chấp nhận (FR-037) |
 | Kiểm tra | `test_connection() -> Ok \| ModelError` · `run_eval() -> EvalReport` | chạy trên luồng worker; tiến độ qua sự kiện |
@@ -30,8 +31,8 @@ Rust cụ thể (`Engine` + `Receiver<Event>`) và cách ánh xạ sang lệnh/s
 
 | Sự kiện | Nội dung |
 |---|---|
-| `recording_state` | `recording \| paused \| stopped`, thời gian đã ghi |
-| `recording_warning` | `coordinates_only` / `text_not_recorded` cho bước vừa ghi (FR-008) |
+| `recording_state` | `recording \| paused \| stopped`, thời gian đã ghi; `paused` kèm lý do `user \| session_locked` (khoá phiên, UAC, Remote Desktop ngắt — FR-001) |
+| `recording_warning` | `coordinates_only` / `text_not_recorded` / `target_elevated` cho bước vừa ghi (FR-008, Edge Cases) |
 | `run_state` | run_id, skill, trạng thái (data-model §Run, gồm `stopping`), bước hiện tại, nấc, model_calls/ngân sách, thời gian máy tự làm/ngân sách; khi kết thúc kèm lý do: `failed(time_budget \| model_budget \| approval_timeout \| stuck_timeout \| rejected \| launch_failed \| no_responder \| disk_full \| input_guard_lost)`, `cancelled(user \| emergency_stop)` |
 | `run_log` | một dòng log vừa ghi (đã lọc bí mật) |
 | `prompt` | **yêu cầu người dùng** (dưới) |
@@ -51,11 +52,16 @@ kind ∈ approval        choices: approve | reject
                                                        `expect` rỗng không khớp selector, `model_declined` — model
                                                        trả `none`/`ask_user`, `approval_retry_blocked` — `retry` ở
                                                        bước `approval`, `window_ambiguous` — nhiều cửa sổ khớp mà
-                                                       không kiểm chứng được, lỗi model `auth_error`/`unavailable`),
+                                                       không kiểm chứng được, `secret_step` — bước bí mật không
+                                                       khớp/không đạt, không dùng model (FR-016), `target_elevated`
+                                                       — ứng dụng đích chạy quyền cao hơn, lỗi model
+                                                       `auth_error`/`unavailable`),
                                                        ảnh lúc ghi, ảnh hiện tại
        user_input      choices: continue | cancel          (cancel = "Huỷ")
        missing_secret  choices: continue | cancel          context: tên khoá (gọi set_secret trước khi continue)
        schedule_ask    choices: run_now | postpone(minutes) | skip     context: lịch, skill, inputs
+       trace_cleanup   choices: delete | keep          context: skill vừa biên dịch; không có deadline;
+                                                       không trả lời / no_responder → keep (FR-054)
 ```
 
 - Tại một thời điểm có tối đa một `prompt` của lần chạy đang chạy; `schedule_ask` không phát khi đang có lần

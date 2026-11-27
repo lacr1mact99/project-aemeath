@@ -21,7 +21,8 @@ Content-Type: application/json
   thêm qua cài đặt ẩn `model.use_json_schema`, nhưng bước phân tích dưới đây vẫn chạy.
 - `max_tokens`: không gửi mặc định (model suy luận cần chỗ cho phần suy nghĩ); M0 quyết có đặt hay không.
 - Chỉ đọc `choices[0].message.content`. Bỏ qua `reasoning_content` hoặc trường suy nghĩ riêng.
-- Timeout `settings.model.timeout_seconds` (30). HTTP 401/403 → `auth_error`; lỗi mạng/timeout/5xx →
+- Timeout `settings.model.timeout_seconds` (30) tính cho cả lời gọi, gồm thời gian sinh câu trả lời. Thân câu
+  trả lời > 256 KB → ngừng đọc, coi là sai định dạng (FR-032). HTTP 401/403 → `auth_error`; lỗi mạng/timeout/5xx/429 →
   `unavailable`; cả hai được xử lý như `ask_user` và nguyên nhân nằm trong yêu cầu người dùng + log (FR-032). Không tự thử lại
   khi lỗi mạng (mỗi lần thử lại tốn ngân sách và thời gian của người dùng).
 
@@ -49,6 +50,9 @@ ghi đều được thay bằng `‹đã ẩn›`. Chuỗi rỗng hoặc ngắn 
 mọi chữ "a" — miễn trừ có chủ đích); giá trị bí mật thì luôn che bất kể độ dài. SC-009 chỉ tính chuỗi ≥ 3 ký tự và mọi giá trị bí mật.
 
 **Giới hạn kích thước (FR-030)**: tổng độ dài toàn bộ `messages` gửi đi (system prompt + ví dụ mẫu + câu hỏi) tính bằng số ký tự ÷ 4 MUST ≤ 2.000. Vượt thì bỏ ứng viên từ cuối danh sách (độ giống thấp nhất) tới khi đạt; không còn ứng viên nào → kết quả `ask_user` (diagnose) / `none` (pick_element), không gửi.
+
+**Không gọi model** (cả `pick_element` lẫn `diagnose`) ở bước có `expect` rỗng (FR-020) và bước có
+`{{secret:k}}` (FR-016) — chuyển thẳng `stuck`.
 
 ## 1. `pick_element` (nấc 2)
 

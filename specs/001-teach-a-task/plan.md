@@ -40,7 +40,20 @@ Per-Monitor-V2 DPI aware.
 
 **Performance Goals**: dừng khẩn cấp: không gửi thao tác sau ≤ 1 s, báo "đã dừng" ≤ 2 s (SC-003, FR-022); mỗi lần hỏi ứng dụng đích ≤ 5 s + 1 lần thử lại (FR-051); mỗi bước ≤ 3 phút thời gian máy tự làm (FR-023); gắn nhãn nền ≤ 2 phút/skill (FR-011); dung lượng trống tối thiểu 500 MB (FR-052); hook bị ngắt phát hiện ≤ 1 s (FR-053); một bước ở nấc 1 ≤ 2 s (p95, ứng dụng đích phản hồi bình thường; chỉ là thông tin — `teach bench` báo vượt nhưng mã thoát không phụ thuộc) gồm chờ giao diện ổn định (một định nghĩa "ổn định" cho cả ghi và chạy: cây phần tử + tiêu đề cửa sổ đích không đổi trong 300 ms liên tiếp; chờ tối đa 1,5 s khi GHI để không làm chậm người dùng, tối đa 5 s khi CHẠY rồi vẫn kiểm tra `expect`);
 ghi không làm trễ thao tác người dùng (hook trả ≤ 1 ms); mỗi lần gọi model ≤ 30 s (timeout); sự kiện trạng
-thái phát ra ≤ 100 ms sau thay đổi (để giao diện 002 đạt ≤ 1 s).
+thái phát ra ≤ 100 ms sau thay đổi (để giao diện 002 đạt ≤ 1 s); chờ cửa sổ sau khi mở ứng dụng ≤ 30 s
+(FR-018); mỗi lần OCR ≤ 5 s (FR-004); biên dịch ≤ 10 s cho bản ghi 10 phút (FR-011); hỏi lịch ≤ 30 s sau giờ hẹn
+(FR-041, tick 15 s); thân câu trả lời model ≤ 256 KB (FR-032). Ảnh: PNG vùng cửa sổ đích, ghi xuống đĩa ngay;
+vùng có cạnh dài > 1920 px thu nhỏ còn 1920 (ảnh chỉ để xem; OCR dùng ảnh gốc trong bộ nhớ rồi bỏ). M0 (T009) đo
+MB/phút ghi và MB/lần chạy để ghi vào research.md; sàn bảo vệ là 500 MB trống (FR-052) + giữ 50 lần chạy (FR-026).
+Lõi chạy nền chờ lịch: chỉ luồng tick 15 s và luồng hook, không đánh thức máy (FR-043).
+
+**Cách đo** (mỗi mục tiêu): dừng khẩn cấp, `launch_failed`, OCR/UIA quá hạn, trần bước, ngân sách → test
+`runner_ladder`/`engine_run` với `FakeDesktop` + đồng hồ giả, và quickstart §M2 trên máy thật (≥ 20 lần nhấn dừng,
+gồm khi chờ model giả treo và app treo); sự kiện ≤ 100 ms → `engine_run` (100 lần chuyển trạng thái); nấc 1 p95
+và thời gian mỗi skill → `teach bench --mode 1` ghi vào báo cáo bench; hook ≤ 1 ms, MB/phút → spike M0
+(`spike_record`), ghi research.md §Kết quả M0; biên dịch ≤ 10 s → test `compiler` với trace mẫu 10 phút; hỏi lịch
+≤ 30 s, máy ngủ, chỉnh đồng hồ → `tests/scheduler.rs` (quickstart §M5); độ trễ model, OCR trên ảnh Windows công ty
+→ `probe-model`/spike M0 **trên máy công ty**.
 
 **Constraints**: chỉ văn bản tới model, tổng độ dài messages ≤ 2.000 (số ký tự ÷ 4) mỗi lần gọi (FR-030); không phụ thuộc structured output/tool
 calling; không gửi ảnh, bí mật, clipboard, văn bản đã gõ; chạy được hoàn toàn khi không có model/mạng;
@@ -96,7 +109,7 @@ specs/001-teach-a-task/
 │   ├── trace-format.md
 │   ├── model-protocol.md
 │   └── storage-files.md   # settings, schedules, run log, eval, dòng lệnh
-├── checklists/requirements.md
+├── checklists/            # requirements.md, performance.md, security.md
 └── tasks.md             # Phase 2 (/speckit-tasks — đã tạo)
 ```
 

@@ -42,7 +42,7 @@ schedules:
 ```
 
 `event` ∈ `asking` · `waiting_unlock` · `postponed` · `skipped` · `missed` · `queued` · `run_started`
-· `run_finished`. Lịch sử lịch không bị dọn cùng log lần chạy.
+· `run_finished`. `skipped` có thêm `reason` (`user` | `skill_not_ready`, FR-041). Lịch sử lịch không bị dọn cùng log lần chạy.
 
 ## `runs\<skill>\<run_id>\run.jsonl`
 
@@ -91,7 +91,7 @@ CLI của lõi, dùng [bề mặt điều khiển](./control-surface.md); không
 
 | Lệnh | Việc | Mã thoát |
 |---|---|---|
-| `teach record "<mô tả>"` | ghi tới khi nhấn phím tắt Dừng (hoặc 10 phút), in cảnh báo từng bước, biên dịch thành skill nháp | 0 có skill, 3 không có bước |
+| `teach record "<mô tả>"` | ghi tới khi nhấn phím tắt Dừng (hoặc 10 phút), in cảnh báo từng bước, biên dịch thành skill nháp, rồi hỏi có xoá bản ghi gốc không (stdin đóng → giữ; FR-054) | 0 có skill, 3 không có bước |
 | `teach run <skill> [--input k=v]... [--trial] [--no-model] [--corrupt-primary] [--inject-dialog-at <step>]` | chạy skill; yêu cầu người dùng hỏi ở console; `--trial` hỏi xác nhận sẵn sàng khi xong; các cờ còn lại tạo 3 chế độ của bộ đo | 0 thành công, 1 thất bại, 2 huỷ |
 | `teach skill list\|show <skill>\|patches <skill> [--keep\|--undo <step>:<idx>]` | xem skill, duyệt tự vá | 0 |
 | `teach config set-model --url <u> --name <n>` · `teach config set-key` (đọc từ stdin, không echo) · `teach config accept-notice` · `teach secret set <key>` | cài đặt, bí mật | 0 |

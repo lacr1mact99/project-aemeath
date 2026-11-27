@@ -42,8 +42,10 @@ Thư mục dữ liệu được đổi trong Cài đặt; con trỏ tới thư m
 | screen | {width, height, scale} | để quy đổi toạ độ |
 | events | danh sách Event | xem contracts/trace-format.md; không chứa ký tự gõ trong ô mật khẩu (FR-006) |
 
-Trace là bất biến sau khi ghi. Có thể xoá sau khi đã biên dịch thành skill (ảnh cần cho editor đã được
-copy sang thư mục skill).
+Trace là bất biến sau khi ghi. Giữ (FR-054): mặc định tới khi skill có `source_trace` trỏ tới nó bị xoá; ngay
+sau biên dịch lõi phát prompt `trace_cleanup` hỏi xoá luôn; người dùng xoá được bất kỳ lúc nào (`delete_trace`),
+skill vẫn dùng được vì ảnh cần cho editor đã được copy sang thư mục skill. Trace 0 bước bị xoá ngay. Ảnh lưu PNG,
+ghi xuống đĩa ngay khi chụp (FR-003).
 
 ### Skill
 
@@ -104,7 +106,7 @@ Mọi `{{name}}` trong `text`/`expect` của bước MUST trỏ tới một Inpu
 | expect | danh sách Condition | tất cả phải đúng; rỗng = chỉ cần hành động không lỗi, và bước bị cấm nấc 2/4 + tự vá (FR-020) |
 | approval | bool | mặc định false |
 | skip_if | Condition \| null | |
-| warnings | danh sách chuỗi | `coordinates_only` (FR-008), `text_not_recorded` (không xác định được ô có phải mật khẩu, research R-4), `unverifiable` (`expect` rỗng — FR-020: không sửa chữa bằng model, không tự vá); tính lại mỗi lần lưu skill, chỉ để hiển thị |
+| warnings | danh sách chuỗi | `coordinates_only` (FR-008), `text_not_recorded` (không xác định được ô có phải mật khẩu, research R-4), `unverifiable` (`expect` rỗng — FR-020: không sửa chữa bằng model, không tự vá), `clipboard_external` (bước dán không có bước sao chép/cắt trước đó — FR-002), `suggest_approval` (gợi ý bật `approval` — FR-021); tính lại mỗi lần lưu skill, chỉ để hiển thị |
 
 **Selector** — đúng một trong các dạng sau, kèm siêu dữ liệu tự vá:
 
@@ -197,6 +199,12 @@ Bất biến: không có đường nào từ `due` tới `running` mà không qu
 chạy hiện tại kết thúc. Lần kích hoạt mới của cùng lịch đến khi lần cũ chưa xong: nếu lần cũ ở
 `asking`/`queued`/`postponed`/`waiting_unlock` → lần cũ được ghi `missed` và thay bằng lần mới (không chồng hộp
 hỏi); nếu lần cũ đang `running` → lần mới `queued`.
+
+Lựa chọn Chạy ngay gắn với đúng một Occurrence. Trước khi `asking → running`, kiểm lại (FR-041): skill `ready`,
+không khoá, không có run/ghi khác, chưa quá `wait_window`; không đạt → `skipped` (skill không sẵn sàng),
+`waiting_unlock`, `queued` hoặc `missed`, kèm lý do trong lịch sử. Máy ngủ lúc đến giờ = máy khoá, không đánh thức
+máy. Đồng hồ bị chỉnh/đổi múi giờ: tính lại `next_due` từ giờ hiện tại; mỗi lịch chỉ xét lần đến hạn gần nhất đã
+qua; không tạo hai Occurrence cho cùng `(schedule, due)` (FR-043).
 
 ### Settings (cài đặt)
 
