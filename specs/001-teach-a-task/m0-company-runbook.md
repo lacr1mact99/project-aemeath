@@ -23,10 +23,13 @@ Kết quả đo trên máy dev **không** thay được kết quả máy công t
 ```powershell
 cd F:\project-aemeath
 git pull
-cargo build --release --examples
+# CRT tĩnh: exe không cần VC++ Redistributable trên máy công ty
+$env:RUSTFLAGS = "-C target-feature=+crt-static"
+cargo build --release --examples --target-dir target\m0-static
+Remove-Item Env:RUSTFLAGS
 $out = "$env:USERPROFILE\Desktop\teach-m0"
 New-Item -ItemType Directory -Force $out | Out-Null
-Copy-Item target\release\examples\*.exe $out -Exclude *-*.exe
+Copy-Item target\m0-static\release\examples\*.exe $out -Exclude *-*.exe
 Copy-Item specs\001-teach-a-task\m0-company-runbook.md $out
 Get-ChildItem $out
 ```
