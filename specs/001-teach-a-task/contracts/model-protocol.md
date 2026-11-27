@@ -101,8 +101,8 @@ LANGUAGE: vi
 Answer with one line of JSON: {"intent": "<short sentence>"}
 ```
 
-- Ngữ cảnh chỉ gồm bước hiện tại (`THIS`) và ngôn ngữ yêu cầu; không gửi mục tiêu skill, bước trước/sau
-  hay phần còn lại của skill (Constitution II, FR-030).
+- Ngữ cảnh chỉ gồm bước hiện tại (`THIS`) và ngôn ngữ; không gửi mục tiêu skill, bước trước/sau hay
+  phần còn lại của skill (Constitution II, FR-030).
 - Giá trị cho phép: chuỗi một dòng, 1–120 ký tự.
 - Có trong bộ câu hỏi mẫu (Constitution II): chấm theo quy tắc ở data-model §Offline eval case.
 - Lỗi → nhãn tất định theo ngôn ngữ cài đặt: `Bấm "Lưu" (Button)` / `Click "Save" (Button)`,

@@ -56,7 +56,7 @@ Người dùng văn phòng lặp lại cùng một chuỗi thao tác trên ứng
 - Q: (analyze 4) Sau khi người dùng làm tay và chọn Tiếp tục ở yêu cầu `stuck`, bước coi là xong khi nào? → A: Hệ thống kiểm lại `expect` của bước: đạt → sang bước sau; không đạt → hỏi `stuck` lại; `expect` rỗng → chấp nhận và ghi log `confirmed_by_user`.
 - Q: (analyze 4) Ví dụ `skip_if` chỉ có `name` có hợp lệ không? → A: Không; selector trong `element_exists` theo đúng quy tắc selector (`role` + `name`), ví dụ trong contracts/skill-format.md đã sửa thành `{element_exists: {role: Text, name: "Đã lưu"}}`.
 - Q: (analyze 5) `label_step` có được gửi bước liền trước/liền sau không? → A: Không; chỉ bước hiện tại (không gửi cả mục tiêu skill), đúng giới hạn ngữ cảnh của Constitution II và FR-030.
-- Q: (analyze 6) Thông báo dữ liệu phải liệt kê những gì? → A: Đúng mọi trường có thể gửi: ý định bước, loại hành động, tiêu đề cửa sổ, tên tiến trình, tên/vai trò/mã/trạng thái phần tử, tên ô đích, độ dài văn bản đã gõ; test fail nếu trường được phép gửi không có trong thông báo.
+- Q: (analyze 6) Thông báo dữ liệu phải liệt kê những gì? → A: Đúng danh sách trường được phép gửi: ý định bước, loại hành động, tiêu đề cửa sổ, tên tiến trình, tên/vai trò/mã/trạng thái phần tử, tên ô đích, độ dài văn bản đã gõ.
 - Q: (analyze 5) Prompt `user_input` / `missing_secret` hết hạn thì lần chạy thất bại với lý do gì? → A: `stuck_timeout` (chỉ prompt `approval` dùng `approval_timeout`).
 
 ## User Scenarios & Testing *(mandatory)*
