@@ -42,7 +42,7 @@ diện thật; phần model dùng máy chủ giả trên `127.0.0.1` (máy dev k
 - [ ] T008 [P] Spike OCR (**máy công ty**): `crates/teach-core/examples/spike_ocr.rs` — **hai cổng riêng** (plan D-3): (1) gọi `OcrEngine` từ exe **unpackaged** và từ kiểu phân phối plan 002 dự kiến, đo 0.6a — trượt thì chốt một phương án (sparse package / Tesseract `vie` / bỏ `ocr_text` khỏi MVP) và cập nhật plan/research; (2) chỉ khi (1) đạt hoặc với phương án thay thế: `OcrEngine` vi-VN nếu `IsLanguageSupported` else en-US, so khớp bỏ dấu 10 nút nhãn tiếng Việt, ghi `Get-WindowsCapability -Online | ? Name -like 'Language.OCR*'`; đo 0.6b (đạt ≥ 9/10)
 - [ ] T009 [P] Spike chụp: `crates/teach-core/examples/spike_capture.rs` — `xcap` chụp cửa sổ đích + cửa sổ cùng tiến trình ở 150% DPI và hai màn hình khác DPI, tô kín vùng cửa sổ tiến trình khác chồng lên; đo 0.7; nếu `xcap` sai khung → ghi quyết định dùng GDI `BitBlt`
 - [ ] T010 [P] Spike phím tắt: `crates/teach-core/examples/spike_hotkeys.rs` — bắt `Ctrl+Alt+Esc`, `Ctrl+Alt+P`, `Ctrl+Alt+S` trong hook khi ứng dụng khác (kể cả toàn màn hình) đang focus, nuốt tổ hợp khỏi ứng dụng đích; đo 0.8 (20/20)
-- [ ] T011 [P] Spike bí mật: `crates/teach-core/examples/spike_secret.rs` — ghi/đọc/xoá qua `keyring` và xác nhận mức lưu `CRED_PERSIST_LOCAL_MACHINE` (data-model §Secret reference); nếu `keyring` không cho chọn → ghi quyết định gọi `CredWriteW` trực tiếp
+- [ ] T011 [P] Spike bí mật: `crates/teach-core/examples/spike_secret.rs` — ghi/đọc/xoá qua `keyring` và xác nhận mức lưu `CRED_PERSIST_LOCAL_MACHINE` (data-model §Secret reference); nếu `keyring` không cho chọn → ghi quyết định gọi `CredWriteW` trực tiếp; đo 0.9 (cổng A)
 - [ ] T012 Spike model (**máy công ty**, cả DeepSeek và GLM): `crates/teach-core/examples/spike_probe.rs` — `ureq` POST `{base_url}/chat/completions` theo contracts/model-protocol.md §Giao thức; đo tương thích OpenAI, `response_format: json_schema`, vị trí phần suy nghĩ, p50/p95, giới hạn ngữ cảnh, 20 câu JSON một dòng (đạt ≥ 19/20); TLS qua kho chứng chỉ Windows + proxy hệ thống (không hard-code giá trị mạng)
 - [ ] T087 [P] App thử có kiểm soát `crates/teach-core/examples/bench_target.rs` (Win32 thuần qua crate `windows`): vài nút/ô có `automation_id`, nhận lệnh qua named pipe `\\.\pipe\teach-bench-target`: `hang_ui <ms>` (treo luồng UI — đọc UIA/`Invoke`/`SetValue` treo theo), `dialog <title>` (bật hộp thoại modal **của chính tiến trình** với nút Cancel/OK/Don't Save), `reset`, `state` (trả trạng thái thật để `check.ps1` đối chiếu, độc lập với `expect`); dùng cho T088 và bench chế độ 3 (T063)
 - [ ] T088 Spike dừng khi lời gọi treo: `crates/teach-core/examples/spike_stop.rs` (plan D-1) — bản thử `Gate` (mutex + cờ dừng + theo dõi phím giữ), luồng hook bật cờ và gọi `release_all_held()`; trên `bench_target` treo theo lệnh đo 4 ca × 5 lần (đọc UIA treo, `Invoke` treo, `SetValue` treo, SendInput liên tục): mốc lần gửi cuối qua `Gate` so với lúc nhấn, có tác dụng muộn không và sau bao lâu, `IUIAutomation2::TransactionTimeout` có cắt lời gọi có tác dụng phụ không; đo 0.13; chốt dùng `Invoke`/`SetValue` hay SendInput mặc định
@@ -50,7 +50,7 @@ diện thật; phần model dùng máy chủ giả trên `127.0.0.1` (máy dev k
 - [ ] T090 [P] Spike phiên: `crates/teach-core/examples/spike_session.rs` — `WTSRegisterSessionNotification` + phát hiện secure desktop: khoá/mở khoá, UAC, RDP ngắt/nối lại, cửa sổ RDP thu nhỏ ở máy khách; mỗi ca 5 lần lúc "ghi" và lúc "chạy" giả; đo 0.11
 - [ ] T013 Ghi kết quả T006–T012, T087–T090 theo từng cổng (A trước, B và lần đo lại trên máy công ty khi có) và các phương án dự phòng đã chọn vào `specs/001-teach-a-task/research.md` §Kết quả M0 (gồm `RECORD_LAG_LIMIT_MS`, lựa chọn OCR theo kiểu phân phối, SendInput hay `Invoke` mặc định); cập nhật plan.md nếu đổi thư viện
 
-**Checkpoint A (M0-Dev)**: quickstart §M0 dòng 0.1, 0.4, 0.5, 0.7, 0.8, 0.13, 0.14 và phần máy dev của 0.2, 0.3, 0.11 có kết quả; plan D-1, D-2 và `RECORD_LAG_LIMIT_MS` đã chốt. Chặn: nền tảng Windows (T021–T025, T027) và runner phát thao tác (T040, T083–T085). Setup và spike bắt đầu ngay.
+**Checkpoint A (M0-Dev)**: quickstart §M0 dòng 0.1, 0.4, 0.5, 0.7, 0.8, 0.9, 0.13, 0.14 và phần máy dev của 0.2, 0.3, 0.11 có kết quả; plan D-1, D-2 và `RECORD_LAG_LIMIT_MS` đã chốt. Chặn: nền tảng Windows (T021–T025, T027) và runner phát thao tác (T040, T083–T085). Setup và spike bắt đầu ngay.
 
 **Checkpoint B (M0-Cty)**: dòng 0.6a, 0.6b (plan D-3) và 0.10 có kết quả trên máy công ty. Chặn: phần dựa vào OCR (T026, nhánh OCR của T033/T039 — trước cổng này `ocr_text` coi như không khớp, recorder rơi về `xy_in_window` như FR-004 khi OCR quá hạn) và việc bắt đầu US4/M3 (T053 trở đi, Constitution VI: đo giao thức model trước khi xây client). Không chặn M1/M2.
 
@@ -62,7 +62,7 @@ diện thật; phần model dùng máy chủ giả trên `127.0.0.1` (máy dev k
 
 **Purpose**: Kiểu dữ liệu, lưu trữ, nền tảng Windows và bề mặt điều khiển — mọi story đều cần
 
-**⚠️ CRITICAL**: Chưa xong phase này thì chưa làm story nào
+**⚠️ CRITICAL**: Chưa xong phase này thì chưa làm story nào — **trừ T026 (OCR)**: T026 chờ checkpoint B (máy công ty) và không nằm trong điều kiện hoàn tất phase này; trước đó mọi đường OCR trả "không có OCR" (xử lý như `OcrTimeout`, FR-004).
 
 - [ ] T014 Implement `crates/teach-core/src/store.rs`: thư mục dữ liệu mặc định `%LOCALAPPDATA%\teach\` (FR-007) với con trỏ `location.yaml` ở vị trí mặc định; bố cục thư mục theo data-model §Bố cục; ghi YAML nguyên tử (file tạm + rename) cho skill, cài đặt, lịch; hàm `free_space_ok()` (≥ 500 MB trống trên ổ chứa thư mục dữ liệu — FR-052); `update_skill(name, |skill| ...)`: khoá **liên tiến trình** theo skill (named mutex `Local\teach-skill-<name>`), đọc lại file mới nhất, áp thay đổi, ghi nguyên tử — đường ghi duy nhất cho `skill.yaml`; skill không tồn tại → `not_found`, không tạo lại; `revision()` = FNV-1a nội dung file cho kiểm tra phiên bản của `save_skill` (FR-013, data-model §Ghi đồng thời); ghi thêm JSONL kèm flush; dọn log `prune_runs(skill, keep, active_run_ids)` giữ `keep_runs_per_skill` thư mục mới nhất trong `runs\<skill>\`, không đụng run đang chạy/tạm dừng, không đụng skill/lịch/lịch sử lịch (FR-026); `Settings` theo contracts/storage-files.md `settings.yaml` (không có trường API key; trường lạ → từ chối tải); đổi thư mục dữ liệu MUST từ chối ổ mạng/UNC, ổ ánh xạ mạng, thư mục OneDrive/đồng bộ đám mây đã biết và thư mục cá nhân chuyển hướng lên máy chủ, kèm lý do (FR-038)
 - [ ] T015 [P] Test `crates/teach-core/tests/store.rs`: hai luồng `update_skill` đồng thời sửa hai trường khác nhau → cả hai thay đổi còn; **hai tiến trình** (test tự gọi lại chính nó qua `std::process::Command` với biến môi trường) cùng `update_skill` 50 lần → không mất thay đổi nào; `update_skill` trên skill đã xoá → `not_found`, thư mục không bị tạo lại; từ chối `\\server\share`, ổ ánh xạ, đường dẫn trong `%OneDrive%`; ghi nguyên tử không để file dở; settings có trường lạ bị từ chối; `prune_runs` với 51 thư mục run và `keep = 50` → còn 50 mới nhất, run đang chạy (dù cũ nhất) không bị xoá, `skill.yaml`/`schedules.yaml`/`schedule_history.jsonl` còn nguyên (FR-026)
@@ -77,12 +77,12 @@ diện thật; phần model dùng máy chủ giả trên `127.0.0.1` (máy dev k
 - [ ] T024 [P] Implement `crates/teach-core/src/platform/window.rs`: tìm cửa sổ theo `process` (không phân biệt hoa thường) + `title_contains`; nhiều cửa sổ cùng khớp → trả về "khớp nhiều" để runner đi nhánh sửa chữa (spec Edge Cases); đưa lên trước; `launch(path,args)`; `foreground() -> WindowInfo` dùng cho kiểm tra trước mỗi lần gửi input (FR-049)
 - [ ] T025 [P] Implement `crates/teach-core/src/platform/capture.rs` (theo T009): chụp vùng cửa sổ đích + cửa sổ/hộp thoại cùng tiến trình; tô kín vùng bị cửa sổ tiến trình khác chồng lên; tô kín danh sách rect (ô mật khẩu); ghi PNG xuống đĩa ngay khi chụp, vùng có cạnh dài > 1920 px thu nhỏ còn 1920 (plan §Performance Goals); không bao giờ chụp toàn màn hình (FR-003)
 - [ ] T026 [P] Implement `crates/teach-core/src/platform/ocr.rs` (theo T008): OCR vùng quanh điểm → danh sách `(text, rect)`; ngôn ngữ vi-VN nếu có, else en-US; mỗi lần OCR có thời gian chờ tối đa 5 s, quá hạn → lỗi `OcrTimeout` (FR-004)
-- [ ] T027 Define trait `Desktop` in `crates/teach-core/src/platform/mod.rs` (đọc cây cửa sổ, tìm cửa sổ, foreground, gửi input, chụp, OCR, trạng thái khoá/idle) với bản thật dùng T021–T026, và bản giả `FakeDesktop` (kịch bản dựng sẵn, ghi lại mọi input đã gửi) in `crates/teach-core/tests/support/mod.rs`
+- [ ] T027 Define trait `Desktop` in `crates/teach-core/src/platform/mod.rs` (đọc cây cửa sổ, tìm cửa sổ, foreground, gửi input, chụp, OCR, trạng thái khoá/idle) với bản thật dùng T021–T025 (phương thức OCR của bản thật trả "không có OCR" — như `OcrTimeout` — cho tới khi T026 xong sau checkpoint B; T027 chỉ chờ checkpoint A), và bản giả `FakeDesktop` (kịch bản dựng sẵn, ghi lại mọi input đã gửi) in `crates/teach-core/tests/support/mod.rs`
 - [ ] T028 Implement `crates/teach-core/src/engine.rs` theo contracts/control-surface.md: `Engine` + enum lệnh + `Receiver<Event>`; mã lỗi `invalid|busy|not_found|not_ready|conflict|model_*|io`; `prompt_closed` với lý do `answered|expired|superseded|run_ended|invalidated` — prompt đã đóng trả lời → `invalid`; một worker duy nhất + khoá liên tiến trình named mutex `Local\teach-core-worker` dùng chung cho **cả ghi và chạy**, để CLI và giao diện không chạy hai skill cùng lúc, không ghi trong lúc chạy và ngược lại (tiến trình đến sau nhận `busy` — FR-025); `UserPrompt {id, kind, context, choices, deadline}` (hạn chót: lần chạy tay `budget.manual_prompt_timeout_minutes` mặc định 60, lần chạy theo lịch `schedule.approval_timeout_minutes` mặc định 30; FR-024, FR-044); `answer_prompt` từ chối lựa chọn ngoài `choices`; hết hạn/không trả lời được → xử lý an toàn theo FR-050 (lần chạy `failed(no_responder | approval_timeout | stuck_timeout)`, hỏi lịch → không chạy); sự kiện phát ≤ 100 ms sau thay đổi
 - [ ] T029 [P] Test `crates/teach-core/tests/engine.rs`: lựa chọn ngoài `choices` (với prompt giả) → `invalid` và trạng thái không đổi; lệnh thứ hai khi worker bận (worker giả) → `busy`, gồm `start_run` khi đang ghi và `start_recording` khi đang chạy, và khi mutex đang bị tiến trình khác giữ (FR-025); không có lệnh nào trả API key/giá trị bí mật (kiểm tra bằng danh sách lệnh). Phần cần runner (`start_run`, `run_state`, prompt hết hạn) ở T086
 - [ ] T030 Implement CLI skeleton `crates/teach-core/src/bin/teach.rs`: phân tích tham số thủ công (không thêm crate) cho các lệnh con ở contracts/storage-files.md §Dòng lệnh; hiển thị `prompt` ở console và đọc lựa chọn từ stdin; stdin đóng/không phải console → trả lời theo FR-050 (không bao giờ đồng ý)
 
-**Checkpoint**: Nền tảng sẵn sàng — các story bắt đầu được.
+**Checkpoint**: Nền tảng sẵn sàng (không gồm T026) — US1/US2 bắt đầu được dù checkpoint B chưa đạt.
 
 ---
 
@@ -229,12 +229,12 @@ idle và khoá máy giả; 0 `run_started` khi chưa có `run_now` (SC-008).
 
 ### Phase Dependencies
 
-- **Setup (P1)** → **M0 Spike (P2)** → **Foundational (P3)** → các story → **Polish (P10)**
+- **Setup (P1)** → **M0 cổng A (P2)** → **Foundational (P3, trừ T026)** → US1/US2/US3 → **Polish (P10)**; song song: **M0 cổng B** (máy công ty) → T026 + nhánh OCR của T033/T039, và → US4/US5 (M3)
 - Spike chạy song song (T088 cần T087); T013 chờ T006–T012, T087–T090. Nền tảng Windows (T021–T025, T027) và runner phát thao tác (T040, T083–T085) chờ checkpoint A; OCR (T026, nhánh OCR của T033/T039) và US4 (T053 trở đi) chờ checkpoint B; tự vá (T059–T061) chờ checkpoint B và checkpoint M2; T022 ← T088, T021 ← T089, T026 ← T008 cổng (1). T082 (kiểm tra phát hành) chờ T080 và T081. Foundational dùng kết quả spike (T021 ← T006/T007/T010, T025 ← T009, T026 ← T008, T019 ← T011)
 
 ### User Story Dependencies
 
-- **US1 (P1)**: sau Foundational; không phụ thuộc story khác
+- **US1 (P1)**: sau Foundational (trừ T026); không phụ thuộc story khác; nhánh OCR của recorder bật sau checkpoint B
 - **US2 (P2)**: sau Foundational; chạy bằng skill viết tay được, nhưng T046 cần US1 để ghi skill chuẩn
 - **US3 (P3)**: sau US2 (`confirm_trial` cần run `trial`)
 - **US4 (P4)**: sau US2 (nấc 2/4 cắm vào bậc thang); T062 sửa compiler của US1 — Constitution VI: US2 (M2) phải đạt trước khi bắt đầu US4 (M3)
@@ -271,7 +271,7 @@ Task: "Test crates/teach-core/tests/runner_repair.rs"                           
 
 ### MVP First (User Story 1 + 2)
 
-1. Setup → M0 Spike → Foundational
+1. Setup → M0 cổng A (máy dev) → Foundational (trừ T026 OCR); cổng B (máy công ty) chạy song song khi có máy
 2. US1: ghi + biên dịch → kiểm tra quickstart §M1
 3. US2: chạy tất định → `bench --mode 1` đạt 10/10, 0 lần gọi model
 4. **Dừng và đánh giá**: lõi tất định tự đứng vững (Constitution I, VI) — đây là MVP

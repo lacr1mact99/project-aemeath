@@ -30,7 +30,7 @@ Spike kỹ thuật. Mỗi mục ghi kết quả (đạt/không, số đo, quyế
 trên máy phát triển không có giá trị). M0 có **hai cổng**:
 
 - **Cổng A (M0-Dev)** — chặn nền tảng Windows (T021–T025, T027) và runner phát thao tác (T040, T083–T085): các dòng
-  0.1, 0.4, 0.5, 0.7, 0.8, 0.13, 0.14 và phần máy dev của 0.2, 0.3, 0.11; plan D-1, D-2 và `RECORD_LAG_LIMIT_MS`
+  0.1, 0.4, 0.5, 0.7, 0.8, 0.9, 0.13, 0.14 và phần máy dev của 0.2, 0.3, 0.11; plan D-1, D-2 và `RECORD_LAG_LIMIT_MS`
   đã chốt.
 - **Cổng B (M0-Cty)** — chặn phần dựa vào OCR (T026, nhánh OCR của T033/T039; trước cổng này `ocr_text` coi như
   không khớp, recorder rơi về `xy_in_window` như FR-004 khi OCR quá hạn) và việc bắt đầu US4/M3 (T053 trở đi):
@@ -41,7 +41,7 @@ trên máy phát triển không có giá trị). M0 có **hai cổng**:
 
 | # | Máy | Cổng |
 |---|---|---|
-| 0.1, 0.4, 0.5, 0.7, 0.8, 0.13, 0.14 | Dev (đo lại trên Cty trước checkpoint M2) | A |
+| 0.1, 0.4, 0.5, 0.7, 0.8, 0.9, 0.13, 0.14 | Dev (đo lại trên Cty trước checkpoint M2) | A |
 | 0.2, 0.3, 0.11 | Dev (cổng A) + Cty (bộ gõ, trình duyệt, app nội bộ, chính sách khoá máy/RDP — trước checkpoint M2) | A |
 | 0.6a, 0.6b | **Cty** (gói OCR và kiểu phân phối phụ thuộc ảnh Windows/chính sách của công ty) | B |
 | 0.10 | **Cty** (mạng, proxy, CA, máy chủ model nội bộ) | B |
@@ -57,6 +57,7 @@ trên máy phát triển không có giá trị). M0 có **hai cổng**:
 | 0.6b | `Get-WindowsCapability -Online \| ? Name -like 'Language.OCR*'`; OCR 10 nút nhãn tiếng Việt (chỉ đo khi 0.6a đạt hoặc với phương án thay thế) | selector `ocr_text` (so khớp bỏ dấu) tìm đúng ≥ 9/10 nút (R-5) |
 | 0.7 | Chụp cửa sổ trên màn hình 150% và hai màn hình khác DPI | ảnh đúng khung cửa sổ; `xy_in_window` bấm đúng điểm |
 | 0.8 | Phím tắt dừng khẩn cấp và tạm dừng/dừng ghi qua hook khi cửa sổ khác đang focus (kể cả ứng dụng toàn màn hình) | nhận được 20/20 lần; tổ hợp không lọt vào ứng dụng đích |
+| 0.9 | `spike_secret` (T011): ghi/đọc/xoá bí mật và API key qua `keyring`, kiểm mức lưu bằng `CredReadW` | ghi/đọc/xoá đúng; `Persist = CRED_PERSIST_LOCAL_MACHINE`; không đạt → chốt gọi `CredWriteW` trực tiếp |
 | 0.10 | `cargo run --example spike_probe` (T012) với DeepSeek, rồi với GLM — từ M3 dùng `teach probe-model` (T068) | in ra: tương thích OpenAI?, `json_schema`?, phần suy nghĩ ở đâu, p50/p95 độ trễ, giới hạn ngữ cảnh; **≥ 19/20** câu JSON một dòng hợp lệ (mã thoát 0) |
 | 0.11 | `spike_session` (T090): khoá/mở khoá máy, UAC, ngắt/nối lại RDP, thu nhỏ cửa sổ RDP ở máy khách — mỗi ca 5 lần, cả lúc ghi và lúc chạy | 100% ca khoá/UAC/RDP ngắt được phát hiện và tạm dừng trước thao tác kế tiếp; ca RDP thu nhỏ ghi lại hành vi (giới hạn đã biết) |
 | 0.13 | `spike_stop` (T088) trên `bench_target` treo theo lệnh: đọc UIA treo, `Invoke` treo, `SetValue` treo, SendInput liên tục (plan D-1) — mỗi ca 5 lần | 20/20 không lần gửi mới nào qua `Gate` sau ≤ 1 s; ghi có/không tác dụng muộn và độ trễ; chốt dùng `Invoke`/`SetValue` hay SendInput mặc định |
