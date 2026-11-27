@@ -62,7 +62,7 @@ log giữ 50 lần chạy/skill; thông điệp lõi 2 ngôn ngữ.
 | Nguyên tắc | Cách thiết kế đáp ứng | Trước P0 | Sau P1 |
 |---|---|---|---|
 | I. Tất định trước | Bậc thang nấc 0→5, nấc 1 không gọi model; compiler sinh selector + `expect` bằng code; nhãn tất định khi thiếu model; `run --no-model` + bench chế độ 1 kiểm chứng 0 lần gọi | ✅ | ✅ |
-| II. Trắc nghiệm, chỉ văn bản | 3 loại câu hỏi cố định ([model-protocol](./contracts/model-protocol.md)), cả 3 có trong bộ câu hỏi mẫu (`label_step` chấm theo quy tắc); ngữ cảnh mỗi lần gọi chỉ bước hiện tại + ứng viên (`label_step`: mục tiêu skill + bước hiện tại, không gửi bước trước/sau); bộ phân tích tự viết, hỏi lại 1 lần; không `tools`/ảnh; `json_schema` chỉ là tuỳ chọn bật thêm | ✅ | ✅ |
+| II. Trắc nghiệm, chỉ văn bản | 3 loại câu hỏi cố định ([model-protocol](./contracts/model-protocol.md)), cả 3 có trong bộ câu hỏi mẫu (`label_step` chấm theo quy tắc); ngữ cảnh mỗi lần gọi chỉ bước hiện tại + ứng viên (`label_step`: chỉ bước hiện tại, không gửi mục tiêu skill hay bước trước/sau); bộ phân tích tự viết, hỏi lại 1 lần; không `tools`/ảnh; `json_schema` chỉ là tuỳ chọn bật thêm | ✅ | ✅ |
 | III. Kiểm tra bằng code | `expect` là danh sách Condition tất định; lựa chọn của model luôn qua `expect`; tự vá chỉ khi `expect` đạt | ✅ | ✅ |
 | IV. Con người nắm quyền | Cờ dừng khẩn cấp trong luồng hook của lõi (không phụ thuộc giao diện, R-8); input không mang `TEACH_MAGIC` → tạm dừng (R-2); `approval`; ngân sách; máy trạng thái lịch không có cạnh `due → running` không qua lựa chọn Chạy ngay (data-model); bề mặt điều khiển không có lệnh "tự đồng ý" ([control-surface](./contracts/control-surface.md)) | ✅ | ✅ |
 | V. Riêng tư & bí mật | `is_password` + mặc định coi là bí mật khi không xác định (R-4); che ảnh; bí mật chỉ đọc từ Credential Manager ngay trước khi gõ; bộ lọc dữ liệu gửi model có test (SC-009); API key và bí mật chỉ ghi, không có lệnh đọc ra qua bề mặt điều khiển | ✅ | ✅ |
@@ -159,7 +159,7 @@ crates/teach-core/
     ├── store.rs                 # từ chối thư mục mạng/đồng bộ, ghi nguyên tử
     ├── skill_lifecycle.rs       # draft ⇄ ready, tự vá không đổi trạng thái
     ├── runner_repair.rs         # nấc 2/4, tự vá, cấm sửa chữa khi expect rỗng
-    ├── eval.rs                  # chấm bộ câu hỏi mẫu (3 loại), thông báo dữ liệu
+    ├── eval.rs                  # chấm bộ câu hỏi mẫu (3 loại), notice chưa chấp nhận → không có request
     ├── eval_gate.rs             # [[test]] test = false: chỉ chạy bằng `cargo test --test eval_gate` ở bước kiểm tra phát hành
     ├── support/mod.rs           # FakeDesktop (bản giả của trait Desktop)
     └── fixtures/

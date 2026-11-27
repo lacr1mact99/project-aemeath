@@ -76,7 +76,7 @@ Dòng đầu là header, sau đó mỗi sự kiện một dòng, dòng cuối l�
 ```json
 {"id":"pick-001","kind":"pick_element","input":"STEP: ...\nCANDIDATES:\n1. ...","expected":{"choice":3}}
 {"id":"diag-004","kind":"diagnose","input":"STEP: ...","expected":{"action":"dismiss","choice":4}}
-{"id":"label-002","kind":"label_step","input":"GOAL: ...\nTHIS: type 19 characters into Edit \"File name:\" in \"Save As\"\nLANGUAGE: vi","expected":{"language":"vi","must_contain":["File name:"],"must_not_contain":[]}}
+{"id":"label-002","kind":"label_step","input":"THIS: type 19 characters into Edit \"File name:\" in \"Save As\"\nLANGUAGE: vi","expected":{"language":"vi","must_contain":["File name:"],"must_not_contain":[]}}
 ```
 
 Chấm: `pick_element`/`diagnose` — câu trả lời sau bước phân tích bằng `expected` (so sánh JSON) → đúng;
