@@ -1,0 +1,6 @@
+target/
+*.tmp
+*.swp
+.vscode/
+.idea/
+Thumbs.db

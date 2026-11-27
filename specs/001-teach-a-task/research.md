@@ -154,3 +154,26 @@ Thay đổi so với bản nháp gốc v0.3 §5 (`git show d6e355c:specs/001-tea
   bước trên app đó thất bại ở nấc 1 với lý do rõ ràng; không tự nâng quyền.
 - Màn hình khoá / UAC secure desktop: không thao tác được; lịch chờ mở khoá (FR-043).
 - App không có UIA và OCR đọc kém: chỉ còn `xy_in_window` (cảnh báo FR-008).
+
+---
+
+## Kết quả M0
+
+### Cổng A — máy dev, lượt 1 (2026-11-27, chạy tự động; **chưa đóng cổng**)
+
+Chỉ các phép đo chạy được không cần người thao tác. Mọi mục dưới đây phải đo lại trên máy công ty trước checkpoint M2.
+
+| # | Kết quả | Trạng thái |
+|---|---|---|
+| 0.9 | `keyring` 4 ghi `Persist = 3` (ENTERPRISE, đi theo roaming profile), target `LegacyGeneric:target=<user>.<service>`, không chọn được mức lưu. `CredWriteW` trực tiếp với `CRED_PERSIST_LOCAL_MACHINE`: ghi/đọc/xoá đúng, đọc lại `Persist = 2`. **Quyết định**: `secrets.rs` gọi `CredWriteW`/`CredReadW`/`CredDeleteW`, target `teach:<user>`; `keyring` chỉ còn là dev-dependency của `spike_secret`. | Đạt |
+| 0.13 | `spike_stop` trên `bench_target` treo 8 s, dừng bằng bộ hẹn giờ sau 1 s, 4 ca × 5 lần: **20/20 không lần gửi nào qua `Gate` bắt đầu sau cờ dừng** (cờ bật đúng lúc nhấn). Tác dụng muộn ~6,9 s sau dừng: `Invoke` 5/5, `SetValue` 5/5 (khi không đặt timeout), SendInput 5/5 (33 cú bấm đã xếp hàng trong cửa sổ treo, xử lý hết khi hết treo). `IUIAutomation2::TransactionTimeout = 5 s` (cần tạo `CUIAutomation8`, `uiautomation` mặc định tạo `CUIAutomation` không có `IUIAutomation2`): cắt được đọc UIA và **cắt được `SetValue` (không có tác dụng muộn)**, **không cắt được `Invoke`** (chặn tới hết treo rồi vẫn có tác dụng). Chưa thử đường dừng bằng phím thật. | Đạt phần `Gate`; xem D-1 |
+| 0.14 | `LowLevelHooksTimeout` không có trong HKCU (mặc định). Cho hook ngủ 800 ms: phát hiện lệch `GetLastInputInfo` sau 377–675 ms, hồi lại 125–424 ms, 0 sự kiện mất — **chưa chứng minh Windows đã gỡ hook** (có thể chỉ là trễ). Cửa sổ `RegisterHotKey` chung luồng với hook ⇒ `WM_HOTKEY` bị chặn khi hook kẹt (3 lần đến dồn sau khi hook hết ngủ). Phân bố `lag_ms` với UIA giả 200 ms ở 20 sự kiện/s: hàng đợi tăng tuyến tính (p99 5,9 s) — tải này không dùng để chốt ngưỡng. | Chưa đạt — cần đo tiếp |
+| 0.7 | Notepad, 100 % DPI, một màn hình: `xcap` báo khung đúng DWM nhưng ảnh rộng 1901 thay vì 1906 px, chụp 1,4 s; GDI `BitBlt` đúng 1906×1018, 113 ms. Chưa đo 150 % và hai màn hình khác DPI. | Chưa đủ |
+| 0.8 | Hook cài được; `RegisterHotKey(Ctrl+Alt+Esc)` đăng ký được khi chạy riêng (lần thất bại 0x80070581 trước đó là do các spike khác chạy song song cùng đăng ký tổ hợp này). Hook LL nuốt tổ hợp trước khi tới `WM_HOTKEY`, nên hai đường không độc lập với cùng một tổ hợp. | Chưa đo 20/20 |
+| 0.1–0.5, 0.11 | Spike đã viết, chạy khởi động/thoát sạch; cần người thao tác. | Chưa đo |
+
+**Hệ quả thiết kế (D-1 đã duyệt 2026-11-27; D-2 chờ đo):**
+
+- **D-1 (đã chốt)**: `Gate` đúng thiết kế. Không phương án nào loại được tác dụng muộn khi app đích treo. Chốt: SendInput mặc định cho `click`/`type` (không chặn worker); `SetValue` chỉ kèm `TransactionTimeout = 5 s` qua `CUIAutomation8`; `Invoke` chỉ khi SendInput không áp dụng được (phần tử ngoài màn hình), ghi giới hạn vào README. Ngưỡng "tác dụng muộn > 1 s" của plan D-1 bị vượt ở mọi cách gửi khi app treo → cần sửa câu chữ plan/spec về `late_effect_possible` thay vì coi là trượt.
+- **D-2**: cửa sổ `RegisterHotKey` phải ở **luồng riêng**, không chung luồng hook; hook không được nuốt tổ hợp dừng khẩn cấp trước khi `WM_HOTKEY` nhận (hoặc dùng tổ hợp khác cho đường `RegisterHotKey`). Tổ hợp mặc định `Ctrl+Alt+Esc` giữ nguyên (không bị chiếm trên máy dev); kiểm lại trên máy công ty. Hệ quả: hai tiến trình lõi không cùng đăng ký được — tiến trình đến sau chỉ còn đường hook, cảnh báo như plan D-2.
+- **`RECORD_LAG_LIMIT_MS`**: chưa chốt — cần đo với recorder thật + UIA thật ở tốc độ thao tác người.

@@ -1,0 +1,44 @@
+version: 1
+name: xuat-bao-cao-tuan
+description: Xuất báo cáo doanh thu tuần ra PDF
+source_trace: 20261122-091500
+confirmed: {run: 20261122-093012, fingerprint: "9f2c41d07ab35e18"}   # ready nếu trùng dấu vân tay hiện tại
+inputs:
+  - {name: tuan, description: "Tuần cần xuất", example: "2026-W47"}
+steps:
+  - id: 1
+    intent: Mở Excel
+    action: launch
+    window: {process: EXCEL.EXE, process_path: 'C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE'}
+    launch: {path: 'C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE', args: []}
+    expect: [{focused_process: EXCEL.EXE}]
+  - id: 3
+    intent: Bấm nút Lưu trên thanh công cụ
+    action: click
+    window: {process: EXCEL.EXE, title_contains: Excel}
+    target:
+      - {automation_id: FileSave}
+      - {role: Button, name: Lưu}
+      - {ocr_text: Lưu}
+      - {xy_in_window: [0.42, 0.41], at: {role: Button, name: Lưu}}   # chỉ khớp khi phần tử tại điểm là Button "Lưu"
+      - {role: Button, name: "Lưu lại", patch: {id: p-20261129-080102-3, run: 20261129-080102, pending_review: true}}
+      # lúc chạy, selector có `patch` được thử TRƯỚC xy_in_window (data-model §Thứ tự thử selector)
+    expect: [{window_title_contains: "Save As"}]
+    approval: false
+    repeat_safe: true          # người dùng bật: bấm lại nút mở hộp thoại Lưu không gây hậu quả (FR-028)
+    skip_if: {element_exists: {role: Text, name: "Đã lưu"}}
+  - id: 4
+    intent: Nhập tên file
+    action: type
+    window: {process: EXCEL.EXE, title_contains: "Save As"}
+    text: "BaoCao-{{tuan}}.pdf"
+    target: [{role: Edit, name: "File name:"}]
+    expect: [{target_value_equals: "BaoCao-{{tuan}}.pdf"}]
+  - id: 5
+    intent: Đăng nhập cổng báo cáo
+    action: type
+    window: {process: msedge.exe}
+    text: "{{secret:cong_bao_cao}}"
+    target: [{role: Edit, name: "Mật khẩu"}]
+    expect: []
+    approval: true

@@ -89,6 +89,12 @@ thể kẹt; quyết định dừng vì vậy không được nằm trên worker
   sau bao lâu, `TransactionTimeout` có cắt được lời gọi có tác dụng phụ không. **Quyết định dự phòng**: nếu tác dụng
   muộn > 1 s sau khi dừng xảy ra ở (b)/(c), mặc định đổi sang SendInput cho `click`/`type` và chỉ dùng
   `Invoke`/`SetValue` khi SendInput không áp dụng được (phần tử ngoài màn hình), ghi giới hạn vào README.
+- **Đã chốt sau M0 (2026-11-27, research.md §Kết quả M0 0.13)**: `Gate` 20/20 không gửi sau cờ dừng; mọi cách gửi
+  (`Invoke`, `SetValue`, SendInput) đều có tác dụng muộn ~6,9 s khi app đích treo. Mặc định **SendInput** cho
+  `click`/`type` (không chặn worker); `SetValue` chỉ kèm `TransactionTimeout = 5 s` qua `CUIAutomation8` (timeout
+  huỷ được lời gọi, không còn tác dụng muộn); `Invoke` chỉ khi SendInput không áp dụng được (phần tử ngoài màn hình).
+  Mốc 1 s của SC-003 là "không lần gửi **mới** nào"; tác dụng muộn của lời gọi/input đã gửi trước lúc dừng không
+  thu hồi được — lõi ghi `late_effect_possible` và README nêu giới hạn này.
 
 **D-2. Hook bị gỡ và gán dữ liệu ghi cho đúng hành động** (FR-053, FR-003). Windows gỡ hook LL quá
 `LowLevelHooksTimeout` mà không báo; heuristic "thời điểm input lệch" hay cài lại định kỳ chưa chứng minh được
