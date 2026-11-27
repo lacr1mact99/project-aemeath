@@ -1,0 +1,130 @@
+# Contract: giao tiếp với model
+
+Toàn bộ nằm sau **một mô-đun duy nhất** (`src/model/`: `mod.rs` HTTP + vòng hỏi lại, `redact.rs` bộ lọc dữ liệu (FR-033), `prompt.rs` dựng câu hỏi + cắt ứng viên ≤ 2.000 + `PROMPT_VERSION`, `parse.rs` bộ phân tích câu trả lời; Constitution §Ràng buộc). Danh sách ứng viên dựng ở `src/runner/candidates.rs`. Áp dụng FR-028…FR-034.
+
+## Giao thức HTTP
+
+```http
+POST {base_url}/chat/completions
+Authorization: Bearer <api_key từ Credential Manager>
+Content-Type: application/json
+
+{"model": "<settings.model.name>", "temperature": 0, "stream": false,
+ "messages": [ {"role":"system","content": <prompt cố định>},
+               ...ví dụ mẫu dạng cặp user/assistant...,
+               {"role":"user","content": <đầu vào câu hỏi>} ]}
+```
+
+- `base_url` MUST là `https://` (trừ `127.0.0.1`/`localhost`); chứng chỉ luôn được kiểm tra theo kho chứng chỉ
+  Windows, không có cờ tắt (FR-035).
+- Không gửi `tools`, ảnh, hay `response_format` trừ khi M0 xác nhận hỗ trợ `json_schema`; khi đó bật
+  thêm qua cài đặt ẩn `model.use_json_schema`, nhưng bước phân tích dưới đây vẫn chạy.
+- `max_tokens`: không gửi mặc định (model suy luận cần chỗ cho phần suy nghĩ); M0 quyết có đặt hay không.
+- Chỉ đọc `choices[0].message.content`. Bỏ qua `reasoning_content` hoặc trường suy nghĩ riêng.
+- Timeout `settings.model.timeout_seconds` (30) tính cho cả lời gọi, gồm thời gian sinh câu trả lời. Thân câu
+  trả lời > 256 KB → ngừng đọc, coi là sai định dạng (FR-032). HTTP 401/403 → `auth_error`; lỗi mạng/timeout/5xx/429 →
+  `unavailable`; cả hai được xử lý như `ask_user` và nguyên nhân nằm trong yêu cầu người dùng + log (FR-032). Không tự thử lại
+  khi lỗi mạng (mỗi lần thử lại tốn ngân sách và thời gian của người dùng).
+
+## Phân tích câu trả lời (chung cho cả ba loại)
+
+1. Xoá mọi khối `<think>…</think>` (và `<thinking>…</thinking>`).
+2. Tìm đối tượng JSON cân bằng ngoặc đầu tiên (bỏ qua ngoặc trong chuỗi), parse.
+3. Kiểm tra theo bảng "giá trị cho phép" của từng loại.
+4. Sai ở bước 2 hoặc 3 → gửi lại **một lần**: đúng hội thoại cũ (đã lọc) + user:
+   `Invalid answer (<mã lỗi>). Reply with exactly one line of JSON, for example <ví dụ cố định của loại câu hỏi>.`
+   **Không** gửi lại câu trả lời sai của model (role assistant) — nó có thể chứa văn bản chưa lọc và làm phình
+   request. `<mã lỗi>` ∈ `no_json` · `bad_json` · `out_of_range` · `not_allowed` · `too_long` (cố định, không chứa
+   nội dung câu trả lời). Request hỏi lại đi qua cùng bộ lọc và giới hạn 2.000 như request đầu (FR-033).
+5. Vẫn sai → kết quả là `none` (pick_element), `ask_user` (diagnose), hoặc nhãn tất định (label_step).
+
+Mỗi lần gửi (kể cả gửi lại) trong lần chạy tính 1 vào `model_calls` của lần chạy đó. Lời gọi ngoài lần chạy (`label_step`, `eval`, `probe-model`, `test_connection`) không tính vào `model_calls` của lần chạy nào; log của chúng: xem storage-files.md §Log lời gọi model ngoài lần chạy.
+
+## Dữ liệu được phép gửi (FR-030, FR-033)
+
+Được: `intent` của bước, loại hành động, tiêu đề cửa sổ, tên tiến trình, tên/vai trò/mã định danh/trạng
+thái (`enabled`, `focused`, `selected`, `checked`) của phần tử, tên ô đích và **độ dài** văn bản cần gõ.
+**Không bao giờ**: ảnh, giá trị bí mật, nội dung bộ nhớ tạm, văn bản đã/sẽ gõ, giá trị tham số, giá trị
+(Value) của ô nhập. Bộ lọc nằm trong hàm dựng đầu vào; test tự động kiểm tra (SC-009).
+
+**Che chuỗi trùng (FR-033)** — `redact.rs`, áp cho **mọi** request (pick_element, diagnose, label_step, hỏi lại,
+eval, probe-model) và cho **câu trả lời** trước khi ghi log/phát sự kiện: trước khi gửi, mọi đoạn trong phần user (tiêu đề cửa sổ, tên phần tử, ý định)
+trùng — không phân biệt hoa thường — với văn bản đã gõ, giá trị tham số, hoặc giá trị bí mật của lần chạy/bản
+ghi đều được thay bằng `‹đã ẩn›`. Chuỗi rỗng hoặc ngắn hơn 3 ký tự không đưa vào danh sách che (tránh che mất
+mọi chữ "a" — miễn trừ có chủ đích); giá trị bí mật thì luôn che bất kể độ dài. SC-009 chỉ tính chuỗi ≥ 3 ký tự và mọi giá trị bí mật.
+
+**Giới hạn kích thước (FR-030)**: tổng độ dài toàn bộ `messages` gửi đi (system prompt + ví dụ mẫu + câu hỏi) tính bằng số ký tự ÷ 4 MUST ≤ 2.000. Vượt thì bỏ ứng viên từ cuối danh sách (độ giống thấp nhất) tới khi đạt; không còn ứng viên nào → kết quả `ask_user` (diagnose) / `none` (pick_element), không gửi.
+
+**Không gọi model** (cả `pick_element` lẫn `diagnose`) ở bước không thể kết thúc ở `verified` — `expect` rỗng hoặc
+mọi điều kiện đã đúng ở lần kiểm `expect` thứ nhất (`pre_expect.before_rung1`, FR-018/FR-020) — và bước có `{{secret:k}}` (FR-016): chuyển thẳng `stuck`.
+
+## 1. `pick_element` (nấc 2)
+
+Đầu vào (phần user):
+
+```text
+STEP: Bấm nút Lưu trên thanh công cụ
+ACTION: click
+WINDOW: "Hoá đơn - Excel" (EXCEL.EXE)
+RECORDED TARGET: role=Button name="Lưu" automation_id=FileSave
+CANDIDATES:
+1. Button "Lưu lại" id=FileSave2 [enabled]
+2. Button "Lưu thành..." id=FileSaveAs [enabled]
+3. MenuItem "Lưu" [enabled]
+Answer with one line of JSON: {"choice": <number>} or {"choice": "none"}
+```
+
+- Ứng viên: tối đa 40, lấy từ cửa sổ đích, lọc theo vai trò tương thích với hành động rồi xếp theo độ
+  giống tên với target đã ghi; đánh số từ 1.
+- Giá trị cho phép: `{"choice": n}` với 1 ≤ n ≤ số ứng viên, hoặc `{"choice": "none"}`.
+- Bước có `approval: true`: phần tử được chọn được hiển thị trong prompt `approval` trước khi gửi (FR-021).
+- Kết quả được thao tác rồi kiểm tra `expect`; bước kết thúc `verified` → tự vá (thêm selector `role`+`name` hoặc
+  `automation_id` của phần tử đã chọn, kèm `patch: {id, run, pending_review: true}`).
+
+## 2. `diagnose` (nấc 4)
+
+```text
+STEP: Bấm nút Lưu trên thanh công cụ
+EXPECTED: window title contains "Save As"
+NOW: focused window "Microsoft Excel" (EXCEL.EXE)
+NEW ELEMENTS:
+1. Dialog "Microsoft Excel"
+2. Text "Bạn có muốn lưu thay đổi?"
+3. Button "Save"
+4. Button "Don't Save"
+5. Button "Cancel"
+Answer with one line of JSON: {"action":"wait"} | {"action":"retry"} | {"action":"dismiss","choice":<number>} | {"action":"ask_user"}
+```
+
+- Giá trị cho phép: `wait` (chờ thêm 2 s rồi kiểm tra lại `expect`), `retry` (thực hiện lại hành động),
+  `dismiss` với `choice` trỏ tới phần tử vai trò `Button` trong danh sách, `ask_user`.
+- `dismiss` chỉ được bấm phần tử nằm trong danh sách NEW ELEMENTS (FR-029) và có nhãn (không phân biệt hoa thường, sau khi bỏ dấu) thuộc danh sách cố định: Cancel, Close, Đóng, Huỷ, Hủy — **không** có `OK`. `dismiss` trỏ nút khác (ví dụ "OK", "Don't Save" trong ví dụ trên) → xử lý như `ask_user`, không bấm.
+- Sau `wait` hoặc `dismiss`: kiểm lại `expect` trước; đạt → bước xong (`verified` nếu điều kiện sai trước lần gửi
+  đầu); không đạt → xét `retry` theo quy tắc dưới, hết cách thì `stuck`.
+- `retry` chỉ được thực hiện khi lần gửi trước là `not_sent` (kể cả bị chặn vì điểm bấm bị che — FR-049), hoặc
+  `action ∈ {scroll, wait}`, hoặc `type` qua `set_value`, hoặc bước có `repeat_safe: true` (FR-028). Ngược lại
+  (`click`, `hotkey`, `launch`, `type` bằng gõ phím đã `sent`, không có `repeat_safe`) và ở mọi bước
+  `approval: true`: `retry` được đổi thành `ask_user` trước khi thực hiện; log ghi cả câu trả gốc lẫn quyết định sau
+  khi đổi (lý do `retry_unsafe` / `approval_retry_blocked`). Không gọi `diagnose` ở bước không thể kết thúc ở
+  `verified` (FR-020).
+
+## 3. `label_step` (lúc biên dịch)
+
+```text
+THIS: type 19 characters into Edit "File name:" in "Save As"
+LANGUAGE: vi
+Answer with one line of JSON: {"intent": "<short sentence>"}
+```
+
+- Ngữ cảnh chỉ gồm bước hiện tại (`THIS`) và ngôn ngữ; không gửi mục tiêu skill, bước trước/sau hay
+  phần còn lại của skill (Constitution II, FR-030).
+- Giá trị cho phép: chuỗi một dòng, 1–120 ký tự.
+- Có trong bộ câu hỏi mẫu (Constitution II): chấm theo quy tắc ở data-model §Offline eval case.
+- Lỗi → nhãn tất định theo ngôn ngữ cài đặt: `Bấm "Lưu" (Button)` / `Click "Save" (Button)`,
+  `Gõ vào ô "File name:"` / `Type into "File name:"`, `Nhấn Ctrl+S` / `Press Ctrl+S`.
+
+## Prompt cố định
+
+Mỗi loại có một system prompt và 2–3 ví dụ mẫu có lời giải, nhúng trong binary, có số phiên bản
+(`PROMPT_VERSION`) ghi vào log mỗi lần gọi. Ngôn ngữ prompt: tiếng Anh (xem research.md R-7); tên phần tử
+giữ nguyên ngôn ngữ gốc. Mọi thay đổi prompt phải chạy lại bộ câu hỏi mẫu (Constitution VI).
