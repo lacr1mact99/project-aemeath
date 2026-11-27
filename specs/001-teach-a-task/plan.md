@@ -62,13 +62,13 @@ log giữ 50 lần chạy/skill; thông điệp lõi 2 ngôn ngữ.
 | Nguyên tắc | Cách thiết kế đáp ứng | Trước P0 | Sau P1 |
 |---|---|---|---|
 | I. Tất định trước | Bậc thang nấc 0→5, nấc 1 không gọi model; compiler sinh selector + `expect` bằng code; nhãn tất định khi thiếu model; `run --no-model` + bench chế độ 1 kiểm chứng 0 lần gọi | ✅ | ✅ |
-| II. Trắc nghiệm, chỉ văn bản | 3 loại câu hỏi cố định ([model-protocol](./contracts/model-protocol.md)), cả 3 có trong bộ câu hỏi mẫu (`label_step` chấm theo quy tắc); bộ phân tích tự viết, hỏi lại 1 lần; không `tools`/ảnh; `json_schema` chỉ là tuỳ chọn bật thêm | ✅ | ✅ |
+| II. Trắc nghiệm, chỉ văn bản | 3 loại câu hỏi cố định ([model-protocol](./contracts/model-protocol.md)), cả 3 có trong bộ câu hỏi mẫu (`label_step` chấm theo quy tắc); ngữ cảnh mỗi lần gọi chỉ bước hiện tại + ứng viên (`label_step`: mục tiêu skill + bước hiện tại, không gửi bước trước/sau); bộ phân tích tự viết, hỏi lại 1 lần; không `tools`/ảnh; `json_schema` chỉ là tuỳ chọn bật thêm | ✅ | ✅ |
 | III. Kiểm tra bằng code | `expect` là danh sách Condition tất định; lựa chọn của model luôn qua `expect`; tự vá chỉ khi `expect` đạt | ✅ | ✅ |
 | IV. Con người nắm quyền | Cờ dừng khẩn cấp trong luồng hook của lõi (không phụ thuộc giao diện, R-8); input không mang `TEACH_MAGIC` → tạm dừng (R-2); `approval`; ngân sách; máy trạng thái lịch không có cạnh `due → running` không qua lựa chọn Chạy ngay (data-model); bề mặt điều khiển không có lệnh "tự đồng ý" ([control-surface](./contracts/control-surface.md)) | ✅ | ✅ |
 | V. Riêng tư & bí mật | `is_password` + mặc định coi là bí mật khi không xác định (R-4); che ảnh; bí mật chỉ đọc từ Credential Manager ngay trước khi gõ; bộ lọc dữ liệu gửi model có test (SC-009); API key và bí mật chỉ ghi, không có lệnh đọc ra qua bề mặt điều khiển | ✅ | ✅ |
-| VI. Đo được mới tính | M0 spike ([quickstart §M0](./quickstart.md#m0)) trước khi xây; `bench`/`eval`/`probe-model` là lệnh CLI có mã thoát theo ngưỡng; thứ tự M2 trước M3; cổng dấu vân tay: test target riêng `eval_gate` (không chạy trong `cargo test` mặc định, bắt buộc ở bước kiểm tra phát hành `cargo test --test eval_gate`) fail khi prompt / `model/parse.rs` / `runner/candidates.rs` đổi mà chưa có kết quả `eval` ≥ 90% trùng dấu vân tay (kết quả tạo trên máy công ty) | ✅ | ✅ |
+| VI. Đo được mới tính | M0 spike ([quickstart §M0](./quickstart.md#m0)) trước khi xây; `bench`/`eval`/`probe-model` là lệnh CLI có mã thoát theo ngưỡng; thứ tự M2 trước M3; cổng dấu vân tay: test target riêng `eval_gate` (không chạy trong `cargo test` mặc định, bắt buộc ở bước kiểm tra phát hành `cargo test --test eval_gate`) fail khi prompt / `model/prompt.rs` / `model/parse.rs` / `runner/candidates.rs` đổi mà chưa có kết quả `eval` ≥ 90% trùng dấu vân tay (kết quả tạo trên máy công ty) | ✅ | ✅ |
 | VII. Đơn giản | Một crate lõi (thư viện + CLI), không tokio, không DB; bỏ `terminator` (dep nặng), `enigo`, `global-hotkey` (phím tắt qua hook có sẵn); i18n tự viết 2 bảng | ✅ | ✅ |
-| Ràng buộc: một mô-đun model | Toàn bộ HTTP + prompt + phân tích ở mô-đun `crates/teach-core/src/model/` (`mod.rs`, `parse.rs`) | ✅ | ✅ |
+| Ràng buộc: một mô-đun model | Toàn bộ HTTP + prompt + phân tích ở mô-đun `crates/teach-core/src/model/` (`mod.rs`, `prompt.rs`, `parse.rs`) | ✅ | ✅ |
 
 Không có vi phạm → bảng Complexity Tracking để trống. (Lựa chọn Tauri cho giao diện và quan hệ với Nguyên tắc
 VII được xử lý trong plan 002.)
@@ -131,7 +131,8 @@ crates/teach-core/
 │   │   ├── candidates.rs        # bộ lọc ứng viên cho pick_element/diagnose (≤ 40, lọc vai trò, xếp độ giống tên) — nằm trong dấu vân tay eval
 │   │   └── check.rs             # đánh giá Condition (expect, skip_if)
 │   ├── model/                   # MỘT mô-đun model
-│   │   ├── mod.rs               # HTTP, dựng đầu vào, bộ lọc dữ liệu (FR-033)
+│   │   ├── mod.rs               # HTTP, vòng hỏi lại, bộ lọc dữ liệu (FR-033)
+│   │   ├── prompt.rs            # dựng câu hỏi theo loại, cắt ứng viên ≤ 2.000 (FR-030), PROMPT_VERSION — nằm trong dấu vân tay eval
 │   │   └── parse.rs             # bộ phân tích câu trả lời — nằm trong dấu vân tay eval
 │   ├── eval.rs                  # chấm bộ câu hỏi mẫu; probe-model
 │   ├── bench.rs                 # 3 chế độ bộ đo (corrupt selector, chèn hộp thoại)

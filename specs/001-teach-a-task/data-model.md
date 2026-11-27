@@ -229,5 +229,5 @@ dữ liệu. Kết quả: tỉ lệ đúng theo từng `kind` và tổng (SC-004
 **Kết quả có dấu vân tay** (`eval\results\<thời điểm>.json` trong thư mục dữ liệu; bản dùng cho phát hành sao vào
 `crates/teach-core/assets/eval/last_result.json`): `{fingerprint, model_name, prompt_version, scores: {pick_element,
 diagnose, label_step, total}, cases, at}`. `fingerprint` = FNV-1a 64-bit (tự viết, không thêm crate) trên nội dung
-`assets/prompts/*`, `src/model/parse.rs` và `src/runner/candidates.rs` (chuẩn hoá xuống dòng LF) — đúng ba thứ Constitution VI nêu: prompt, bộ phân tích câu trả lời, bộ lọc ứng viên; sửa phần khác (HTTP, timeout, so khớp selector nấc 1) không đổi dấu vân tay. Kết quả chỉ chứa tên
+`assets/prompts/*`, `src/model/prompt.rs` (dựng câu hỏi, cắt ứng viên cho đủ ≤ 2.000, `PROMPT_VERSION`), `src/model/parse.rs` và `src/runner/candidates.rs` (chuẩn hoá xuống dòng LF) — đúng ba thứ Constitution VI nêu: prompt (gồm cách dựng câu hỏi), bộ phân tích câu trả lời, bộ lọc ứng viên; sửa phần khác (HTTP, timeout, so khớp selector nấc 1) không đổi dấu vân tay. Kết quả chỉ chứa tên
 model, điểm và id ca — không chứa câu hỏi, câu trả lời hay địa chỉ máy chủ.

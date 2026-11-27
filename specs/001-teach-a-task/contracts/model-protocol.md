@@ -1,6 +1,6 @@
 # Contract: giao tiếp với model
 
-Toàn bộ nằm sau **một mô-đun duy nhất** (`src/model/`: `mod.rs` HTTP + dựng đầu vào + bộ lọc dữ liệu, `parse.rs` bộ phân tích câu trả lời; Constitution §Ràng buộc). Danh sách ứng viên dựng ở `src/runner/candidates.rs`. Áp dụng FR-028…FR-034.
+Toàn bộ nằm sau **một mô-đun duy nhất** (`src/model/`: `mod.rs` HTTP + vòng hỏi lại + bộ lọc dữ liệu, `prompt.rs` dựng câu hỏi + cắt ứng viên ≤ 2.000 + `PROMPT_VERSION`, `parse.rs` bộ phân tích câu trả lời; Constitution §Ràng buộc). Danh sách ứng viên dựng ở `src/runner/candidates.rs`. Áp dụng FR-028…FR-034.
 
 ## Giao thức HTTP
 
@@ -97,13 +97,13 @@ Answer with one line of JSON: {"action":"wait"} | {"action":"retry"} | {"action"
 
 ```text
 GOAL: Xuất báo cáo doanh thu tuần ra PDF
-PREVIOUS: click Button "Lưu" in "Hoá đơn - Excel"
 THIS: type 19 characters into Edit "File name:" in "Save As"
-NEXT: click Button "Save" in "Save As"
 LANGUAGE: vi
 Answer with one line of JSON: {"intent": "<short sentence>"}
 ```
 
+- Ngữ cảnh chỉ gồm mục tiêu của skill (`GOAL`) và bước hiện tại (`THIS`); không gửi bước trước/sau hay
+  phần còn lại của skill (Constitution II, FR-030).
 - Giá trị cho phép: chuỗi một dòng, 1–120 ký tự.
 - Có trong bộ câu hỏi mẫu (Constitution II): chấm theo quy tắc ở data-model §Offline eval case.
 - Lỗi → nhãn tất định theo ngôn ngữ cài đặt: `Bấm "Lưu" (Button)` / `Click "Save" (Button)`,

@@ -63,7 +63,8 @@ kind ∈ approval        choices: approve | reject
 - `answer_prompt` với `choice` không thuộc `choices` → `invalid`, lõi không đổi trạng thái.
 - `deadline`: lần chạy tay `budget.manual_prompt_timeout_minutes` (60 phút), lần chạy theo lịch `schedule.approval_timeout_minutes` (30 phút).
 - Hết `deadline` → lõi tự đóng prompt (`prompt_closed: expired`) và áp quy tắc của spec (thất bại / hỏi lại
-  khi rảnh / bỏ lỡ) — không bao giờ coi hết hạn là đồng ý.
+  khi rảnh / bỏ lỡ) — không bao giờ coi hết hạn là đồng ý. Lý do thất bại khi hết hạn: `approval` →
+  `approval_timeout`; `stuck`, `user_input`, `missing_secret` → `stuck_timeout` (FR-050).
 
 ## CLI `teach`
 
