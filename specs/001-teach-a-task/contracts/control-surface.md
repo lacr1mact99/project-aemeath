@@ -9,7 +9,7 @@ Rust cụ thể (`Engine` + `Receiver<Event>`) và cách ánh xạ sang lệnh/s
 1. Không có lệnh nào cho phép: tự phê duyệt, chạy lịch không qua `answer_prompt(.., run_now)`, đọc API key,
    đọc giá trị bí mật, đọc nội dung đã gõ của ô mật khẩu, gọi model tuỳ ý.
 2. Mọi lệnh và tham số là đầu vào không tin cậy: lõi kiểm tra hợp lệ trước khi làm, không hợp lệ → lỗi, trạng
-   thái không đổi (FR-047). Lệnh có tác dụng phụ trả lỗi có mã (`invalid`, `busy`, `not_found`, `not_ready`, `model_*`, `io`) kèm
+   thái không đổi (FR-047). Lệnh có tác dụng phụ trả lỗi có mã (`invalid`, `busy`, `not_found`, `not_ready`, `conflict`, `model_*`, `io`) kèm
    thông điệp theo ngôn ngữ cài đặt; không panic xuyên ranh giới.
 3. Mọi thay đổi trạng thái chạy/ghi/lịch đều phát sự kiện ≤ 100 ms sau khi xảy ra.
 4. Dừng khẩn cấp không đi qua bề mặt này (hook trong lõi); `stop_run` chỉ là thêm một đường.
@@ -19,13 +19,13 @@ Rust cụ thể (`Engine` + `Receiver<Event>`) và cách ánh xạ sang lệnh/s
 | Nhóm | Lệnh | Ghi chú |
 |---|---|---|
 | Ghi | `start_recording(goal)` · `pause_recording()` · `resume_recording()` · `stop_recording() -> SkillName \| NoSteps` | `busy` nếu đang chạy skill, kể cả ở tiến trình khác trong cùng phiên (FR-025); biên dịch xong phát prompt `trace_cleanup` (FR-054) |
-| Skill | `list_skills() -> [SkillSummary]` · `get_skill(name) -> Skill` · `save_skill(name, Skill) -> Ok \| [FieldError]` · `delete_skill(name)` (xoá cả trace, runs, label_log, lịch — FR-014) · `delete_trace(name)` (xoá trace gốc của skill — FR-054) · `step_image(name, step, before\|after) -> path` | `save_skill` kiểm tra hợp lệ (FR-014), tự đổi `ready → draft` nếu bước đổi (FR-017) và trả `status_changed` |
-| Tự vá | `pending_patches(name) -> [Patch]` · `keep_patch(name, step, idx)` · `undo_patch(name, step, idx)` | không đổi `status` (FR-027) |
-| Chạy | `start_run(name, inputs, trigger) -> RunId` (trả `busy` khi đang ghi, hoặc còn lần chạy ở `running`/`paused`/`stopping` ở bất kỳ tiến trình nào dùng lõi trong cùng phiên — gồm lần chạy vừa huỷ mà lời gọi đang dở chưa trả về, tối đa ~30 s) · `stop_run()` · `answer_prompt(prompt_id, choice)` · `confirm_trial(run_id, ok)` · `list_runs(name) -> [RunSummary]` · `get_run_log(name, run_id) -> [RunLogLine]` | `start_run` thiếu input → `invalid` kèm danh sách thiếu |
+| Skill | `list_skills() -> [SkillSummary]` · `get_skill(name) -> (Skill, revision)` · `save_skill(name, Skill, revision) -> Ok \| [FieldError] \| conflict` · `delete_skill(name)` (xoá cả trace, runs, label_log, lịch — FR-014) · `delete_trace(name)` (xoá trace gốc của skill — FR-054) · `step_image(name, step, before\|after) -> path` | `save_skill` kiểm tra hợp lệ (FR-014); `revision` khác bản trên đĩa → `conflict`, không ghi (FR-013); dấu vân tay thực thi đổi → skill thành `draft`, trả `status_changed` (FR-017); `text` mới chứa `{{secret:k}}` → xoá ảnh của bước đó và các bước sau (FR-016) |
+| Tự vá | `pending_patches(name) -> [Patch]` · `keep_patch(name, patch_id)` · `undo_patch(name, patch_id)` | theo mã ổn định `patch.id`, mã không còn → `not_found`; không đổi `status` (FR-027) |
+| Chạy | `start_run(name, inputs, trigger) -> RunId` (trả `busy` khi đang ghi, hoặc còn lần chạy ở `running`/`paused`/`stopping` ở bất kỳ tiến trình nào dùng lõi trong cùng phiên — gồm lần chạy vừa huỷ mà lời gọi đang dở chưa trả về, tối đa ~30 s) · `stop_run()` · `answer_prompt(prompt_id, choice)` · `confirm_trial(run_id, ok)` (`not_ready` khi run không phải `trial` `succeeded` hoặc `skill_fingerprint` khác dấu vân tay hiện tại — FR-017) · `list_runs(name) -> [RunSummary]` · `get_run_log(name, run_id) -> [RunLogLine]` | `start_run` thiếu input → `invalid` kèm danh sách thiếu |
 | Bí mật | `set_secret(key, value)` · `delete_secret(key)` · `secret_exists(key) -> bool` | chỉ ghi; giá trị không bao giờ đi ra |
 | Cài đặt | `get_settings() -> Settings` (không có key) · `save_settings(Settings) -> Ok \| [FieldError]` · `set_api_key(value)` · `api_key_set() -> bool` · `data_notice() -> Text` · `accept_data_notice()` | lõi từ chối gọi model khi notice chưa chấp nhận (FR-037) |
 | Kiểm tra | `test_connection() -> Ok \| ModelError` · `run_eval() -> EvalReport` | chạy trên luồng worker; tiến độ qua sự kiện |
-| Lịch | `list_schedules() -> [ScheduleSummary]` (kèm `next_due`, lý do tạm ngưng) · `save_schedule(Schedule) -> Ok \| [FieldError]` · `delete_schedule(id)` · `set_schedules_paused(bool)` · `schedule_history(id?) -> [HistoryLine]` · `preview_cron(expr, n) -> [DateTime]` | `save_schedule` từ chối skill `draft` (`not_ready`) |
+| Lịch | `list_schedules() -> [ScheduleSummary]` (kèm `next_due`, lý do tạm ngưng, tiến trình nào đang giữ vòng lịch) · `save_schedule(Schedule) -> Ok \| [FieldError]` · `delete_schedule(id)` · `set_schedules_paused(bool)` · `schedule_history(id?) -> [HistoryLine]` · `preview_cron(expr, n) -> [DateTime]` | `save_schedule` từ chối skill `draft` (`not_ready`) |
 
 ## Sự kiện
 
@@ -36,8 +36,8 @@ Rust cụ thể (`Engine` + `Receiver<Event>`) và cách ánh xạ sang lệnh/s
 | `run_state` | run_id, skill, trạng thái (data-model §Run, gồm `stopping`), bước hiện tại, nấc, model_calls/ngân sách, thời gian máy tự làm/ngân sách; khi kết thúc kèm lý do: `failed(time_budget \| model_budget \| approval_timeout \| stuck_timeout \| rejected \| launch_failed \| no_responder \| disk_full \| input_guard_lost)`, `cancelled(user \| emergency_stop)` |
 | `run_log` | một dòng log vừa ghi (đã lọc bí mật) |
 | `prompt` | **yêu cầu người dùng** (dưới) |
-| `prompt_closed` | prompt_id, lý do (`answered`, `expired`, `superseded`) |
-| `run_finished` | run_id, kết quả, số tự vá chờ duyệt, `trial` (để hỏi xác nhận) |
+| `prompt_closed` | prompt_id, lý do: `answered` · `expired` (hết `deadline`) · `superseded` (lần kích hoạt mới của cùng lịch thay thế) · `run_ended` (lần chạy sở hữu prompt kết thúc: dừng khẩn cấp, `stop_run`, ngân sách, lỗi) · `invalidated` (skill bị xoá/không còn `ready`, lịch bị xoá/tạm ngưng). GUI và CLI MUST đóng hộp hỏi khi nhận sự kiện này; trả lời sau đó → `invalid` |
+| `run_finished` | run_id, kết quả, số tự vá chờ duyệt, `trial` (để hỏi xác nhận), danh sách lệnh `late_effect_possible` (FR-022) |
 | `eval_progress` / `eval_done` | tiến độ, báo cáo |
 | `schedule_changed` | lịch thêm/sửa/xoá/tạm ngưng, `next_due` mới |
 
@@ -45,19 +45,23 @@ Rust cụ thể (`Engine` + `Receiver<Event>`) và cách ánh xạ sang lệnh/s
 
 ```text
 { id, kind, context, choices, deadline? }
-kind ∈ approval        choices: approve | reject
+kind ∈ approval        choices: approve | reject          context: hành động, cửa sổ, phần tử đã xác định (FR-021);
+                                                       approve chỉ có hiệu lực cho đúng một lần gửi
        stuck           choices: continue | cancel          context: lý do (`repair_budget`, `step_timeout` — bước vượt
                                                        3 phút, `target_unresponsive`, `focus_mismatch_secret`,
                                                        `focus_mismatch` — bước thường, `unverifiable_step` — bước
                                                        `expect` rỗng không khớp selector, `model_declined` — model
                                                        trả `none`/`ask_user`, `approval_retry_blocked` — `retry` ở
-                                                       bước `approval`, `window_ambiguous` — nhiều cửa sổ khớp mà
+                                                       bước `approval`, `retry_unsafe` — `retry` sau khi hành động
+                                                       không lặp được đã gửi, bước không có `repeat_safe` (FR-028), `not_discriminating` — mọi
+                                                       `expect` đã đúng ở lần kiểm thứ nhất (hoặc ở lần kiểm thứ hai sau nấc 2) nên không sửa chữa được, `window_ambiguous` — nhiều cửa sổ khớp mà
                                                        không kiểm chứng được, `secret_step` — bước bí mật không
                                                        khớp/không đạt, không dùng model (FR-016), `target_elevated`
                                                        — ứng dụng đích chạy quyền cao hơn, lỗi model
                                                        `auth_error`/`unavailable`),
                                                        ảnh lúc ghi, ảnh hiện tại
-       user_input      choices: continue | cancel          (cancel = "Huỷ")
+       user_input      choices: continue | cancel          (cancel = "Huỷ"); context: `user_touch` | `input_gap`
+                                                       (cơ chế nhận input có khoảng hở — FR-053)
        missing_secret  choices: continue | cancel          context: tên khoá (gọi set_secret trước khi continue)
        schedule_ask    choices: run_now | postpone(minutes) | skip     context: lịch, skill, inputs
        trace_cleanup   choices: delete | keep          context: skill vừa biên dịch; không có deadline;
@@ -68,6 +72,11 @@ kind ∈ approval        choices: approve | reject
   chạy (lõi xếp hàng — data-model §Occurrence).
 - `answer_prompt` với `choice` không thuộc `choices` → `invalid`, lõi không đổi trạng thái.
 - `deadline`: lần chạy tay `budget.manual_prompt_timeout_minutes` (60 phút), lần chạy theo lịch `schedule.approval_timeout_minutes` (30 phút).
+- `deadline` của `schedule_ask` = sớm hơn trong hai mốc: `now + schedule.ask_timeout_minutes` (5 phút) và hết
+  `wait_window_minutes` của lần kích hoạt. Hết hạn do mốc đầu → `prompt_closed(expired)`, lần kích hoạt vẫn
+  `asking` và được hỏi lại khi máy rảnh (FR-042); do mốc sau → `prompt_closed(expired)` + lịch sử `missed`.
+- `schedule_ask` chỉ do tiến trình giữ vòng lịch phát (data-model §Occurrence); mỗi `(schedule, due)` có tối đa
+  một prompt mở.
 - Hết `deadline` → lõi tự đóng prompt (`prompt_closed: expired`) và áp quy tắc của spec (thất bại / hỏi lại
   khi rảnh / bỏ lỡ) — không bao giờ coi hết hạn là đồng ý. Lý do thất bại khi hết hạn: `approval` →
   `approval_timeout`; `stuck`, `user_input`, `missing_secret` → `stuck_timeout` (FR-050).

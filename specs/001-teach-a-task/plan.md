@@ -2,11 +2,11 @@
 
 **Branch**: `001-teach-a-task` | **Date**: 2026-11-22 (cập nhật 2026-11-23: tách giao diện sang 002) | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `specs/001-teach-a-task/spec.md` (+ bản nháp gốc [draft-v0.3.md](./draft-v0.3.md))
+**Input**: Feature specification from `specs/001-teach-a-task/spec.md` (+ bản nháp gốc v0.3, xem lịch sử git: commit `d6e355c`)
 
 ## Summary
 
-Lõi Windows cho phép làm mẫu một workflow trên bất kỳ ứng dụng desktop nào, biên dịch thành skill YAML có bộ
+Lõi Windows cho phép làm mẫu một workflow trên ứng dụng desktop có UIA (phạm vi nghiệm thu MVP: spec §Assumptions "Ứng dụng đích"), biên dịch thành skill YAML có bộ
 chọn phần tử UIA và điều kiện kết quả, rồi chạy lại theo bậc thang tất định (nấc 0–5). Model công ty (chỉ văn
 bản, có thể yếu) chỉ được hỏi câu trắc nghiệm khi bộ chọn hỏng hoặc kết quả sai. Lịch là lời nhắc luôn hỏi
 trước. Lõi là một thư viện Rust kèm CLI `teach` để nghiệm thu không cần giao diện; giao diện Tauri (spec
@@ -30,7 +30,7 @@ lịch), PNG (ảnh). Bí mật trong Windows Credential Manager. Xem [data-mode
 **Testing**: `cargo test` cho logic thuần (không cần giao diện thật): phân tích câu trả lời model, bộ lọc dữ
 liệu gửi model, dựng ứng viên, compiler (trace → skill), kiểm tra hợp lệ skill, thay thế tham số, máy trạng
 thái runner với lớp UIA giả, máy trạng thái lịch với đồng hồ và trạng thái khoá máy giả, giữ log, bề mặt điều
-khiển (lệnh → sự kiện). Hành vi trên giao diện ứng dụng đích: `teach bench` (10 skill chuẩn × 3 chế độ) và
+khiển (lệnh → sự kiện). Hành vi trên giao diện ứng dụng đích: `teach bench` (10 skill chuẩn × chế độ 1/2, 10 skill trên `bench_target` × chế độ 3 — Constitution VI v1.2.0) và
 `teach eval` (bộ câu hỏi mẫu) — Nguyên tắc VI.
 
 **Target Platform**: Windows 10 22H2+ / Windows 11, x64, phiên người dùng đang mở khoá; tiến trình
@@ -48,8 +48,8 @@ MB/phút ghi và MB/lần chạy để ghi vào research.md; sàn bảo vệ là
 Lõi chạy nền chờ lịch: chỉ luồng tick 15 s và luồng hook, không đánh thức máy (FR-043).
 
 **Cách đo** (mỗi mục tiêu): dừng khẩn cấp, `launch_failed`, OCR/UIA quá hạn, trần bước, ngân sách → test
-`runner_ladder`/`engine_run` với `FakeDesktop` + đồng hồ giả, và quickstart §M2 trên máy thật (≥ 20 lần nhấn dừng,
-gồm khi chờ model giả treo và app treo); sự kiện ≤ 100 ms → `engine_run` (100 lần chuyển trạng thái); nấc 1 p95
+`runner_ladder`/`engine_run` với `FakeDesktop` + đồng hồ giả, và trên máy thật theo **bảng số lần thử dừng khẩn cấp**
+ở quickstart §Bảng dừng khẩn cấp (M2: 20 lần gồm app treo và UIA đang `Invoke`; M3: 6 lần khi chờ model treo); sự kiện ≤ 100 ms → `engine_run` (100 lần chuyển trạng thái); nấc 1 p95
 và thời gian mỗi skill → `teach bench --mode 1` ghi vào báo cáo bench; hook ≤ 1 ms, MB/phút → spike M0
 (`spike_record`), ghi research.md §Kết quả M0; biên dịch ≤ 10 s → test `compiler` với trace mẫu 10 phút; hỏi lịch
 ≤ 30 s, máy ngủ, chỉnh đồng hồ → `tests/scheduler.rs` (quickstart §M5); độ trễ model, OCR trên ảnh Windows công ty
@@ -68,6 +68,54 @@ Office) phải đo trên máy công ty (research.md, đầu file).
 **Scale/Scope**: một người dùng/máy; hàng chục skill, mỗi skill ≤ ~100 bước; bản ghi ≤ 10 phút;
 log giữ 50 lần chạy/skill; thông điệp lõi 2 ngôn ngữ.
 
+## Quyết định kỹ thuật phải chốt ở M0 (trước khi xây runner phát thao tác và tự vá)
+
+**D-1. Tách quyết định dừng khỏi lời gọi có thể treo** (FR-022, SC-003). Worker gọi UIA và HTTP đồng bộ nên có
+thể kẹt; quyết định dừng vì vậy không được nằm trên worker:
+
+- **Một cổng phát thao tác duy nhất** `platform/input.rs::Gate`: mọi `SendInput`, `Invoke`, `SetValue`,
+  `Toggle`… đi qua `Gate::dispatch(op)`, giữ một mutex ngắn: kiểm cờ dừng → ghi `sent` → gọi. Cờ dừng được bật
+  bởi luồng hook (hoặc đường dự phòng D-2) **dưới cùng mutex**, nên sau khi cờ bật không lần gửi mới nào bắt đầu.
+  `Gate` tự theo dõi phím/nút đang giữ; **luồng hook** (không phải worker) gọi `Gate::release_all_held()` ngay khi
+  dừng.
+- **Engine** (không phải worker) chuyển run sang `stopping`, phát `cancelled(emergency_stop)` ≤ 2 s; worker cũ khi
+  thoát khỏi lời gọi treo thấy cờ, bỏ kết quả, không gửi gì thêm, rồi nhả `busy` (`start_run` trả `busy` tới lúc đó).
+- **Lời gọi có tác dụng phụ đã bắt đầu** (`Invoke`/`SetValue` vào app treo) không thu hồi được và có thể có tác dụng
+  muộn. Mốc "không thao tác nào được gửi sau 1 s" tính theo lúc **bắt đầu** lời gọi qua `Gate`; log ghi
+  `late_effect_possible` cho lời gọi còn dở lúc dừng. Lời gọi chỉ đọc đặt `IUIAutomation2::ConnectionTimeout` /
+  `TransactionTimeout` (cùng ngân sách 5 s của FR-051).
+- **[M0] spike `spike_stop`** (T087): đo trên app thử treo có kiểm soát (a) đọc UIA treo, (b) `Invoke` treo, (c)
+  `SetValue` treo, (d) SendInput liên tục — mỗi ca: thời điểm cờ bật → lần gửi cuối, tác dụng muộn có xảy ra không và
+  sau bao lâu, `TransactionTimeout` có cắt được lời gọi có tác dụng phụ không. **Quyết định dự phòng**: nếu tác dụng
+  muộn > 1 s sau khi dừng xảy ra ở (b)/(c), mặc định đổi sang SendInput cho `click`/`type` và chỉ dùng
+  `Invoke`/`SetValue` khi SendInput không áp dụng được (phần tử ngoài màn hình), ghi giới hạn vào README.
+
+**D-2. Hook bị gỡ và gán dữ liệu ghi cho đúng hành động** (FR-053, FR-003). Windows gỡ hook LL quá
+`LowLevelHooksTimeout` mà không báo; heuristic "thời điểm input lệch" hay cài lại định kỳ chưa chứng minh được
+1 s. Thiết kế:
+
+- **Dừng khẩn cấp có hai đường độc lập**: hook LL **và** `RegisterHotKey` (WM_HOTKEY, không bị gỡ theo
+  `LowLevelHooksTimeout`) trên cùng cửa sổ message-only. `RegisterHotKey` thất bại (tổ hợp bị app khác giữ) → cảnh
+  báo khi khởi động, vẫn dùng hook.
+- Giám sát hook: cài lại hook mỗi 1 s khi đang ghi/chạy (rẻ, không cần đoán đã mất hay chưa) **và** đối chiếu
+  `GetLastInputInfo` với sự kiện cuối từ hook; lệch > 1 s khi đang chạy → coi là đã mất trong khoảng đó → tạm dừng
+  run (prompt `user_input`, vì không biết người dùng có chạm không); không cài lại được → `input_guard_lost`.
+- Gán dữ liệu: recorder đo `lag_ms` cho mỗi sự kiện; vượt `RECORD_LAG_LIMIT_MS` hoặc focus đã đổi → đánh dấu
+  `uncertain` (contracts/trace-format.md); compiler không sinh selector/`expect` từ dữ liệu đó.
+- **[M0] spike `spike_hookloss`** (T088): ép mất hook (luồng hook ngủ > `LowLevelHooksTimeout`) khi máy rảnh, khi có
+  input liên tục, khi chuyển focus giữa lúc gõ, khi bấm liên tiếp 20 lần/giây; đo thời gian phát hiện và số sự kiện
+  mất; với recorder thật + UIA chậm, đo phân bố `lag_ms` để chốt `RECORD_LAG_LIMIT_MS`. **Không đạt 1 s thì
+  không được tự nới FR-053** (MUST, Constitution IV không thương lượng): phải sửa spec — và constitution nếu chạm
+  IV — trước khi bắt đầu M2; `RegisterHotKey` là đường dừng thứ hai bắt buộc theo FR-053, không thay cho việc phát
+  hiện thao tác của người dùng.
+
+**D-3. OCR cùng với kiểu đóng gói CLI** (FR-004, R-5). `Windows.Media.Ocr` có thể đòi *package identity* khi gọi
+từ ứng dụng desktop; CLI `teach.exe` hiện unpackaged. T008 có **hai cổng riêng**: (1) OCR chạy được trong đúng kiểu
+phân phối (exe unpackaged, và kiểu phân phối plan 002 dự kiến); (2) `ocr_text` tìm đúng ≥ 9/10 nhãn tiếng Việt.
+Cổng (1) trượt → chọn trước khi xây phần dựa vào OCR: (a) sparse package cấp identity cho exe, (b) Tesseract
+`vie` (thêm dep C, Nguyên tắc VII), hoặc (c) bỏ `ocr_text` khỏi MVP — app không UIA chỉ còn `xy_in_window`
+(FR-008). Recorder/runner không phụ thuộc OCR cho tới khi cổng (1) đạt.
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
@@ -76,12 +124,12 @@ log giữ 50 lần chạy/skill; thông điệp lõi 2 ngôn ngữ.
 |---|---|---|---|
 | I. Tất định trước | Bậc thang nấc 0→5, nấc 1 không gọi model; compiler sinh selector + `expect` bằng code; nhãn tất định khi thiếu model; `run --no-model` + bench chế độ 1 kiểm chứng 0 lần gọi | ✅ | ✅ |
 | II. Trắc nghiệm, chỉ văn bản | 3 loại câu hỏi cố định ([model-protocol](./contracts/model-protocol.md)), cả 3 có trong bộ câu hỏi mẫu (`label_step` chấm theo quy tắc); ngữ cảnh mỗi lần gọi chỉ bước hiện tại + ứng viên (`label_step`: chỉ bước hiện tại, không gửi mục tiêu skill hay bước trước/sau); bộ phân tích tự viết, hỏi lại 1 lần; không `tools`/ảnh; `json_schema` chỉ là tuỳ chọn bật thêm | ✅ | ✅ |
-| III. Kiểm tra bằng code | `expect` là danh sách Condition tất định; lựa chọn của model luôn qua `expect`; tự vá chỉ khi `expect` đạt | ✅ | ✅ |
+| III. Kiểm tra bằng code | `expect` là danh sách Condition tất định, kiểm cả trước và sau khi gửi; lựa chọn của model chỉ được chấp nhận và tự vá khi bước `verified` (điều kiện sai → đúng, FR-020); hành động đã gửi không tự lặp (FR-028); `ready` gắn với dấu vân tay thực thi của lần chạy thử (FR-017) | ✅ | ✅ |
 | IV. Con người nắm quyền | Cờ dừng khẩn cấp trong luồng hook của lõi (không phụ thuộc giao diện, R-8); input không mang `TEACH_MAGIC` → tạm dừng (R-2); `approval`; ngân sách; máy trạng thái lịch không có cạnh `due → running` không qua lựa chọn Chạy ngay (data-model); bề mặt điều khiển không có lệnh "tự đồng ý" ([control-surface](./contracts/control-surface.md)) | ✅ | ✅ |
-| V. Riêng tư & bí mật | `is_password` + mặc định coi là bí mật khi không xác định (R-4); che ảnh; bí mật chỉ đọc từ Credential Manager ngay trước khi gõ; bộ lọc dữ liệu gửi model có test (SC-009); API key và bí mật chỉ ghi, không có lệnh đọc ra qua bề mặt điều khiển | ✅ | ✅ |
-| VI. Đo được mới tính | M0 spike ([quickstart §M0](./quickstart.md#m0)) trước khi xây; `bench`/`eval`/`probe-model` là lệnh CLI có mã thoát theo ngưỡng; thứ tự M2 trước M3; cổng dấu vân tay: test target riêng `eval_gate` (không chạy trong `cargo test` mặc định, bắt buộc ở bước kiểm tra phát hành `cargo test --test eval_gate`) fail khi prompt / `model/prompt.rs` / `model/parse.rs` / `runner/candidates.rs` đổi mà chưa có kết quả `eval` ≥ 90% trùng dấu vân tay (kết quả tạo trên máy công ty) | ✅ | ✅ |
+| V. Riêng tư & bí mật | `is_password` + mặc định coi là bí mật khi không xác định (R-4); che ảnh, không xác định được vùng thì bỏ ảnh, không ghi ảnh từ bước gõ bí mật tới hết lần chạy (FR-006, FR-016) — log ghi `shot_omitted` theo §Quy trình Constitution v1.2.0; bộ lọc áp cho mọi request kể cả hỏi lại và cho câu trả lời trước khi ghi log (FR-033); bí mật chỉ đọc từ Credential Manager ngay trước khi gõ; bộ lọc dữ liệu gửi model có test (SC-009); API key và bí mật chỉ ghi, không có lệnh đọc ra qua bề mặt điều khiển | ✅ | ✅ |
+| VI. Đo được mới tính | M0 spike ([quickstart §M0](./quickstart.md#m0)) trước khi xây; `bench`/`eval`/`probe-model` là lệnh CLI có mã thoát theo ngưỡng; thứ tự M2 trước M3; cổng dấu vân tay: test target riêng `eval_gate` (không chạy trong `cargo test` mặc định, bắt buộc ở bước kiểm tra phát hành `cargo test --test eval_gate`) fail khi prompt / `model/prompt.rs` / `model/parse.rs` / `model/redact.rs` / `runner/candidates.rs` / bộ câu hỏi mặc định / trình chấm đổi mà chưa có kết quả `eval` ≥ 90% `release_set` trùng dấu vân tay (kết quả tạo trên máy công ty); bench chế độ 2/3 khẳng định đúng nấc được đo và chấm bằng phép kiểm tra độc lập với `expect`; chế độ 3 chạy trên 10 skill của `bench_target` (hộp thoại thuộc chính app đích) — được phép từ Constitution v1.2.0 | ✅ | ✅ |
 | VII. Đơn giản | Một crate lõi (thư viện + CLI), không tokio, không DB; bỏ `terminator` (dep nặng), `enigo`, `global-hotkey` (phím tắt qua hook có sẵn); i18n tự viết 2 bảng | ✅ | ✅ |
-| Ràng buộc: một mô-đun model | Toàn bộ HTTP + prompt + phân tích ở mô-đun `crates/teach-core/src/model/` (`mod.rs`, `prompt.rs`, `parse.rs`) | ✅ | ✅ |
+| Ràng buộc: một mô-đun model | Toàn bộ HTTP + prompt + phân tích + bộ lọc ở mô-đun `crates/teach-core/src/model/` (`mod.rs`, `prompt.rs`, `parse.rs`, `redact.rs`) | ✅ | ✅ |
 
 Không có vi phạm → bảng Complexity Tracking để trống. (Lựa chọn Tauri cho giao diện và quan hệ với Nguyên tắc
 VII được xử lý trong plan 002.)
@@ -98,7 +146,6 @@ khớp bỏ dấu và tiêu chí M0 OCR được diễn giải lại (R-5); giao
 ```text
 specs/001-teach-a-task/
 ├── spec.md              # đặc tả lõi (đã clarify, đã tách giao diện)
-├── draft-v0.3.md        # bản nháp gốc của người dùng
 ├── plan.md              # file này
 ├── research.md          # Phase 0
 ├── data-model.md        # Phase 1
@@ -124,7 +171,7 @@ crates/teach-core/
 ├── build.rs                     # nhúng manifest cho bin CLI
 ├── teach.exe.manifest           # PerMonitorV2, asInvoker
 ├── README.md                    # build, lệnh CLI, vị trí dữ liệu, giới hạn đã biết
-├── examples/                    # spike M0 (spike_record, spike_input, spike_ocr, spike_capture, spike_hotkeys, spike_secret, spike_probe)
+├── examples/                    # spike M0 (spike_record, spike_input, spike_ocr, spike_capture, spike_hotkeys, spike_secret, spike_probe, spike_stop, spike_hookloss, spike_session); bench_target (app thử có kiểm soát: treo theo lệnh, tự bật hộp thoại của chính nó)
 ├── assets/
 │   ├── prompts/                 # system prompt + ví dụ mẫu: pick_element, diagnose, label_step
 │   └── eval/
@@ -144,7 +191,8 @@ crates/teach-core/
 │   │   ├── candidates.rs        # bộ lọc ứng viên cho pick_element/diagnose (≤ 40, lọc vai trò, xếp độ giống tên) — nằm trong dấu vân tay eval
 │   │   └── check.rs             # đánh giá Condition (expect, skip_if)
 │   ├── model/                   # MỘT mô-đun model
-│   │   ├── mod.rs               # HTTP, vòng hỏi lại, bộ lọc dữ liệu (FR-033)
+│   │   ├── mod.rs               # HTTP, vòng hỏi lại
+│   │   ├── redact.rs            # bộ lọc dữ liệu gửi model + lọc câu trả lời trước khi ghi (FR-033) — nằm trong dấu vân tay eval
 │   │   ├── prompt.rs            # dựng câu hỏi theo loại, cắt ứng viên ≤ 2.000 (FR-030), PROMPT_VERSION — nằm trong dấu vân tay eval
 │   │   └── parse.rs             # bộ phân tích câu trả lời — nằm trong dấu vân tay eval
 │   ├── eval.rs                  # chấm bộ câu hỏi mẫu; probe-model
@@ -156,7 +204,7 @@ crates/teach-core/
 │   └── platform/                # mọi lời gọi Windows nằm ở đây
 │       ├── uia.rs               # bọc uiautomation: đọc cây, phần tử tại điểm, is_password, value, invoke
 │       ├── hooks.rs             # hook LL, phím tắt (dừng khẩn cấp, tạm dừng/dừng ghi), khoá phiên, máy rảnh
-│       ├── input.rs             # SendInput (TEACH_MAGIC), Unicode
+│       ├── input.rs             # Gate: cổng phát thao tác duy nhất (SendInput TEACH_MAGIC, Unicode, Invoke/SetValue), cờ dừng, nhả phím (D-1)
 │       ├── capture.rs           # chụp ảnh, che vùng
 │       ├── ocr.rs               # Windows.Media.Ocr
 │       └── window.rs            # tìm/đưa cửa sổ lên trước, mở ứng dụng
@@ -176,7 +224,8 @@ crates/teach-core/
     ├── eval_gate.rs             # [[test]] test = false: chỉ chạy bằng `cargo test --test eval_gate` ở bước kiểm tra phát hành
     ├── support/mod.rs           # FakeDesktop (bản giả của trait Desktop)
     └── fixtures/
-bench/skills/                    # 10 skill chuẩn (Notepad, Explorer, Calculator, Settings, trình duyệt, Office…)
+bench/skills/                    # 10 skill chuẩn (Notepad, Explorer, Calculator, Settings, trình duyệt, Office…); mỗi skill kèm reset.ps1 (đặt lại trạng thái app) + check.ps1 (kiểm tra kết quả độc lập với expect)
+bench/dialog-skills/             # 10 skill trên bench_target cho chế độ 3 (hộp thoại của chính app đích), cũng có reset/check
 ```
 
 **Structure Decision**: workspace với một crate lõi (thư viện + CLI). Thư viện là thứ giao diện Tauri (002)
@@ -189,7 +238,7 @@ bản thật ở `platform/`, bản giả trong `tests/`. Đây là trait duy nh
 
 | Mốc | Phạm vi | Cổng ra |
 |---|---|---|
-| M0 | Spike lõi: hook + UIA + is_password, SendInput tiếng Việt, OCR, xcap DPI, `spike_probe` (T012) với DeepSeek + GLM (máy công ty); CLI `probe-model` ở T068 | Mọi mục **[M0]** của lõi trong research.md có kết quả ghi vào `research.md` §Kết quả M0; quyết định dự phòng được chốt |
+| M0 | Spike lõi: hook + UIA + is_password, SendInput tiếng Việt, OCR **theo kiểu phân phối** (D-3), xcap DPI, dừng khi lời gọi treo (D-1), mất hook + gán dữ liệu ghi (D-2), khoá phiên/RDP, `spike_probe` (T012) với DeepSeek + GLM và so prompt Anh–Việt (máy công ty); CLI `probe-model` ở T068 | Mọi mục **[M0]** của lõi trong research.md có kết quả ghi vào `research.md` §Kết quả M0; D-1…D-3 và quyết định dự phòng được chốt — runner phát thao tác (T040, T083–T085) và tự vá (T059–T061) chỉ bắt đầu sau đó |
 | M1 | `trace`, `recorder`, `compiler`, `skill`, `store`, CLI `record` | quickstart §M1 |
 | M2 | `runner` nấc 0/1/3/5, `platform/*`, `engine` (lệnh/sự kiện chạy), CLI `run --no-model`, `bench --mode 1`, dừng khẩn cấp | quickstart §M2 (10/10, 0 lần gọi model, ≤ 1 s) |
 | M3 | `model`, `eval`, nấc 2/4, tự vá + duyệt tự vá, `bench --mode 2/3` | quickstart §M3 (≥ 90%, ≥ 8/10, 0 bấm sai lọt) → chọn model mặc định |

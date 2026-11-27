@@ -1,4 +1,18 @@
 <!--
+Sync Impact Report (2026-11-27)
+- Version change: 1.1.0 → 1.2.0 (MINOR: mở rộng hướng dẫn ở VI và §Quy trình, không bỏ nguyên tắc nào)
+- Modified principles:
+  V. Riêng tư — vùng mật khẩu MUST bị che, hoặc ảnh bị bỏ khi không che chắc chắn được
+  VI. Đo được mới tính — chế độ "hộp thoại bất ngờ" được chạy trên bộ 10 skill của ứng dụng thử có kiểm soát
+       (hộp thoại phải thuộc chính ứng dụng đích mới đo đúng nấc chẩn đoán); lần đạt phải có log đúng nấc được đo
+       và được chấm bằng phép kiểm tra độc lập với điều kiện kết quả của skill
+- Expanded sections: "Quy trình…" — log lần chạy được phép bỏ ảnh khi ảnh có thể lộ bí mật (Nguyên tắc V
+  thắng), log MUST ghi rõ ảnh nào bị bỏ và vì sao
+- Removed sections: none
+- Dependent artifacts: specs/001-teach-a-task/spec.md (FR-006, FR-016, SC-004), plan.md (Constitution Check),
+  tasks.md (T063, T091), contracts/storage-files.md (`shot_omitted`)
+- Deferred TODOs: none
+
 Sync Impact Report (2026-11-23)
 - Version change: 1.0.0 → 1.1.0 (MINOR: mở rộng hướng dẫn, không bỏ/định nghĩa lại nguyên tắc)
 - Modified principles:
@@ -81,7 +95,8 @@ Lý do: sai một cú bấm trên máy thật có thể gây mất dữ liệu; 
 ### V. Riêng tư và bí mật ở lại trên máy (KHÔNG THƯƠNG LƯỢNG)
 
 - Bản ghi, ảnh chụp, log MUST chỉ lưu trên máy người dùng.
-- Ký tự gõ vào ô mật khẩu MUST NOT được ghi; vùng đó MUST bị che trong ảnh.
+- Ký tự gõ vào ô mật khẩu MUST NOT được ghi; vùng đó MUST bị che trong ảnh, hoặc ảnh MUST bị bỏ khi không
+  che chắc chắn được (không biết vùng, hoặc giá trị bí mật có thể hiện lại ở chỗ khác).
 - Ảnh chụp, giá trị bí mật, nội dung clipboard MUST NOT được gửi tới máy chủ model.
 - API key và bí mật MUST chỉ nằm trong kho bí mật của hệ điều hành (Windows Credential Manager);
   MUST NOT xuất hiện trong file cấu hình, skill, log, prompt hay thông báo lỗi.
@@ -94,7 +109,10 @@ Lý do: bản ghi màn hình chứa dữ liệu nghiệp vụ; rò rỉ là khô
 
 - Mọi khẳng định về độ tin cậy (đặc biệt "model yếu vẫn làm được") MUST được chứng minh bằng bộ đo:
   10 skill chuẩn × 3 chế độ (giao diện không đổi + tắt model; bộ chọn bị làm hỏng; hộp thoại bất
-  ngờ) và bộ kiểm tra ngoại tuyến có đáp án.
+  ngờ) và bộ kiểm tra ngoại tuyến có đáp án. Chế độ hộp thoại bất ngờ được phép dùng bộ 10 skill trên
+  một ứng dụng thử có kiểm soát, để hộp thoại thuộc chính ứng dụng đích. Một lần chỉ được tính đạt khi
+  log cho thấy đúng nấc đang đo đã được dùng và phép kiểm tra kết quả độc lập với điều kiện kết quả của
+  skill xác nhận.
 - Ẩn số về hạ tầng (giao thức máy chủ, OCR tiếng Việt, khả năng build thư viện) MUST được đo ở bước
   thử nghiệm kỹ thuật trước khi xây phụ thuộc vào chúng.
 - Phần tất định MUST đạt nghiệm thu (10/10 skill chế độ 1, không gọi model) trước khi thêm phần model.
@@ -148,7 +166,8 @@ Lý do: mỗi lớp phức tạp thêm là một chỗ có thể hỏng trên m�
 - Kiểm thử: logic không tầm thường (bộ phân tích câu trả lời model, sinh bộ chọn/điều kiện, bậc
   thang phân giải, tính lịch, che bí mật) MUST có test tự động chạy được không cần giao diện thật.
   Hành vi trên giao diện thật được nghiệm thu bằng bộ đo ở Nguyên tắc VI.
-- Mỗi lần chạy skill MUST để lại log đủ để tái hiện: bước, nấc đã dùng, prompt, câu trả lời, ảnh.
+- Mỗi lần chạy skill MUST để lại log đủ để tái hiện: bước, nấc đã dùng, prompt, câu trả lời, ảnh. Ảnh
+  có thể lộ bí mật được bỏ theo Nguyên tắc V; khi đó log MUST ghi rõ ảnh nào bị bỏ và vì sao.
 - Review MUST kiểm tra riêng các nguyên tắc KHÔNG THƯƠNG LƯỢNG (IV, V) cho mọi thay đổi chạm tới
   ghi, chạy, lịch, log hoặc giao tiếp model.
 
@@ -164,4 +183,4 @@ Lý do: mỗi lớp phức tạp thêm là một chỗ có thể hỏng trên m�
 - Tuân thủ: mỗi plan và mỗi review MUST xác nhận tuân thủ; độ phức tạp vượt Nguyên tắc VII MUST được
   biện minh trong bảng Complexity Tracking của plan.
 
-**Version**: 1.1.0 | **Ratified**: 2026-11-22 | **Last Amended**: 2026-11-23
+**Version**: 1.2.0 | **Ratified**: 2026-11-22 | **Last Amended**: 2026-11-27

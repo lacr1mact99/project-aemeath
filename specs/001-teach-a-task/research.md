@@ -4,7 +4,7 @@ Phase 0 của `/speckit-plan`. Số phiên bản và ngày tra từ crates.io / 
 ngày 2026-11-22. Mục ghi **[M0]** là ẩn số chỉ trả lời được bằng spike trên máy thật; tiêu chí xem
 [quickstart.md](./quickstart.md#m0).
 
-Thay đổi so với `draft-v0.3.md` §5 được đánh dấu **(đổi)**.
+Thay đổi so với bản nháp gốc v0.3 §5 (`git show d6e355c:specs/001-teach-a-task/draft-v0.3.md`) được đánh dấu **(đổi)**.
 
 > **Môi trường phát triển ≠ môi trường đích.** Máy dùng để phát triển không thuộc mạng nội bộ công ty.
 > Không quyết định nào dưới đây dựa trên mạng, proxy, chứng chỉ, DNS hay cấu hình của máy phát triển, và
@@ -76,8 +76,12 @@ Thay đổi so với `draft-v0.3.md` §5 được đánh dấu **(đổi)**.
 - **Ảnh hưởng nghiệm thu**: tiêu chí M0 "OCR đọc được nhãn nút tiếng Việt" được hiểu là: **selector
   `ocr_text` tìm đúng ≥ 9/10 nút có nhãn tiếng Việt** trên ứng dụng thử, không đòi chuỗi OCR khớp từng dấu.
   Nếu không đạt → mở quyết định thêm Tesseract.
-- **[M0]**: `Get-WindowsCapability -Online | ? Name -like 'Language.OCR*'` trên Win10/Win11; gọi
-  `OcrEngine` từ exe unpackaged.
+- **Đóng gói**: `Windows.Media.Ocr` có thể chỉ được hỗ trợ cho ứng dụng desktop có *package identity*; CLI
+  `teach.exe` hiện unpackaged. Chưa xác minh — đây là cổng riêng của M0 (plan D-3), độc lập với độ chính xác.
+- **[M0]** hai cổng: (1) gọi `OcrEngine` từ `teach.exe` **unpackaged** và từ kiểu phân phối plan 002 dự kiến —
+  chạy được hay không; (2) `Get-WindowsCapability -Online | ? Name -like 'Language.OCR*'` trên Win10/Win11 và
+  ≥ 9/10 nhãn tiếng Việt. Cổng (1) trượt → chọn một: sparse package cấp identity, Tesseract `vie`, hoặc bỏ
+  `ocr_text` khỏi MVP (plan D-3) — chốt trước khi xây recorder/runner phần OCR.
 
 ## R-6. Giao tiếp model — `ureq` thay `reqwest`
 
@@ -101,8 +105,8 @@ Thay đổi so với `draft-v0.3.md` §5 được đánh dấu **(đổi)**.
   ngôn ngữ gốc; `label_step` nhận tham số `LANGUAGE: vi|en` để trả câu ý định theo ngôn ngữ cài đặt (FR-048).
 - **Rationale**: model nhỏ thường theo chỉ dẫn định dạng tiếng Anh ổn định hơn; định dạng câu trả lời là
   JSON nên không phụ thuộc ngôn ngữ người dùng.
-- **[M0/M3]**: chạy bộ câu hỏi mẫu với prompt Anh và Việt cho cả hai model; giữ bản tiếng Anh trừ khi bản
-  Việt cao hơn ≥ 5 điểm phần trăm.
+- **[M0/M3]** (quickstart 0.12, máy công ty): chạy bộ câu hỏi mẫu với prompt Anh và Việt cho cả hai model; giữ
+  bản tiếng Anh trừ khi bản Việt cao hơn ≥ 5 điểm phần trăm. Kết quả ghi research.md §Kết quả M0.
 
 ## R-8. Phím tắt, dừng khẩn cấp, thông điệp (giao diện → spec 002)
 
@@ -112,7 +116,7 @@ Thay đổi so với `draft-v0.3.md` §5 được đánh dấu **(đổi)**.
 
 | Nhu cầu | Decision | Ghi chú / rủi ro |
 |---|---|---|
-| Dừng khẩn cấp | **không** dựa vào giao diện: hook bàn phím (R-2) nhận tổ hợp dừng và bật cờ `AtomicBool` mà runner kiểm tra trước mỗi thao tác và trong mọi vòng chờ (≤ 50 ms) | ≤ 1 s kể cả khi giao diện ẩn/treo/chưa mở (SC-003) |
+| Dừng khẩn cấp | **không** dựa vào giao diện: hook bàn phím (R-2) **và** `RegisterHotKey` (đường thứ hai, không bị Windows gỡ theo `LowLevelHooksTimeout`) bật cờ dừng dưới mutex của `Gate` — cổng phát thao tác duy nhất (plan D-1); runner còn kiểm cờ trong mọi vòng chờ (≤ 50 ms) | ≤ 1 s kể cả khi giao diện ẩn/treo/chưa mở hoặc worker kẹt trong lời gọi UIA/HTTP (SC-003); **[M0]** `spike_stop`, `spike_hookloss` |
 | Phím tắt ghi (tạm dừng/dừng) | **(đổi)** cũng bắt trong hook LL của lõi, không dùng `global-hotkey` | một cơ chế cho mọi phím tắt; tổ hợp bị nuốt khỏi ứng dụng đích khi khớp; trùng nhau → `save_settings` báo lỗi |
 | Thông điệp lõi (FR-048) | hai bảng chuỗi `vi`/`en` trong `i18n.rs`, khoá là enum: nhãn tất định, lý do tạm dừng, lỗi | không thêm crate; chuỗi giao diện thuộc 002 |
 
@@ -126,7 +130,7 @@ Thay đổi so với `draft-v0.3.md` §5 được đánh dấu **(đổi)**.
 | Cron | **(đổi)** `croner` (5 trường, xử lý DST theo giờ địa phương qua `chrono`) | `cron` 0.17 bắt buộc 7 trường. croner 5.0 rất mới → ghim phiên bản, có test DST |
 | Thời gian | `chrono` | |
 | Máy rảnh | `GetLastInputInfo` | so với `idle_minutes` |
-| Khoá phiên | `WTSRegisterSessionNotification` trên cửa sổ message-only ở luồng nền (cùng luồng với hook); dự phòng poll `OpenInputDesktop` mỗi 5 s | **[M0]** |
+| Khoá phiên | `WTSRegisterSessionNotification` trên cửa sổ message-only ở luồng nền (cùng luồng với hook); dự phòng poll `OpenInputDesktop` mỗi 5 s | **[M0]** `spike_session` (quickstart 0.11): khoá/mở khoá, UAC, RDP ngắt/nối lại, cửa sổ RDP thu nhỏ — đo thời gian từ sự kiện tới lúc ghi/chạy tạm dừng |
 | Chụp màn hình | `xcap` 0.9 | issue Windows mở về DPI/vị trí cửa sổ (#143) → **[M0]**; dự phòng GDI `BitBlt` qua `windows` |
 | PNG | `image` (chỉ codec png) | che vùng mật khẩu + ghi file |
 
@@ -136,7 +140,10 @@ Thay đổi so với `draft-v0.3.md` §5 được đánh dấu **(đổi)**.
 - **Luồng input**: hook LL + cửa sổ message-only nhận thông báo khoá phiên; đẩy sự kiện qua channel; giữ cờ
   dừng khẩn cấp và nhận mọi phím tắt của lõi.
 - **Luồng worker**: recorder-processor *hoặc* runner (không bao giờ cả hai, FR-025); gọi UIA (COM khởi tạo
-  MTA trên luồng này), chụp ảnh, gọi model đồng bộ.
+  MTA trên luồng này), chụp ảnh, gọi model đồng bộ. Worker có thể kẹt trong lời gọi; nó **không** quyết định dừng:
+  mọi thao tác đi qua `Gate` (plan D-1), cờ dừng do luồng input bật, engine phát `cancelled`. Lời gọi UIA chỉ đọc
+  dùng `ConnectionTimeout`/`TransactionTimeout`; lời gọi có tác dụng phụ còn dở lúc dừng được log
+  `late_effect_possible`.
 - **Scheduler**: luồng tick riêng của lõi, kiểm tra mỗi 15 s; logic là máy trạng thái
   thuần (data-model §Occurrence) để test không cần đồng hồ thật.
 - Giao tiếp bên gọi ⇄ lõi ⇄ worker: `std::sync::mpsc` (lệnh xuống, sự kiện lên) — không cần crossbeam.

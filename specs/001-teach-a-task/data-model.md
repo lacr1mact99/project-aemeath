@@ -53,28 +53,38 @@ ghi xuống đĩa ngay khi chụp (FR-003).
 |---|---|---|
 | name | chuỗi | duy nhất; `[a-z0-9-]`, 1–64 ký tự; là tên thư mục |
 | description | chuỗi | lấy từ `goal` của trace, sửa được |
-| status | enum | `draft` \| `ready` |
+| status | enum (**tính ra, không lưu trong file**) | `ready` khi `confirmed.fingerprint` = `exec_fingerprint()` hiện tại, ngược lại `draft` (FR-017) |
 | source_trace | chuỗi \| null | id trace gốc |
 | inputs | danh sách Input | tên duy nhất trong skill |
 | steps | danh sách Step | ≥ 1 bước; `id` duy nhất, không bắt buộc liên tục |
-| last_confirmed_run | chuỗi \| null | run_id lần chạy thử được xác nhận gần nhất |
+| confirmed | {run, fingerprint} \| null | lần chạy thử được xác nhận gần nhất và dấu vân tay thực thi lúc lần chạy đó bắt đầu |
+
+**Dấu vân tay thực thi** `exec_fingerprint()` (FR-017): FNV-1a 64-bit (cùng hàm với dấu vân tay eval) trên JSON
+chuẩn hoá (khoá theo thứ tự cố định) của: `inputs[].name`; với từng bước theo thứ tự: `id`, `action`, `window`,
+`target` **bỏ selector có `patch`**, `text`, `keys`, `scroll`, `wait_ms`, `launch`, `expect`, `approval`, `repeat_safe`, `skip_if`.
+Không gồm: `name`, `description`, `intent`, `warnings`, `source_trace`, `confirmed`, selector tự vá.
 
 **Chuyển trạng thái** (FR-012, FR-017, FR-027):
 
 ```text
-            biên dịch xong
+            biên dịch xong (confirmed = null)
                  │
                  ▼
-  ┌──────────► draft ── chạy thử thành công + người dùng bấm Xác nhận ──► ready
+  ┌──────────► draft ── confirm_trial(run): run trial succeeded
+  │                     và run.skill_fingerprint = exec_fingerprint() ──► ready (confirmed = {run, fp})
   │                                                                       │
-  └──────── người dùng sửa bước (thêm/xoá/sắp xếp/sửa trường) ◄───────────┘
-            (tự vá và hoàn tác tự vá KHÔNG đổi trạng thái)
+  └──── exec_fingerprint() đổi (sửa nội dung thực thi qua app hoặc tay) ◄─┘
+        (sửa intent/description, tự vá, Giữ/Hoàn tác tự vá KHÔNG đổi dấu vân tay)
 ```
 
-Chỉ skill `ready` được gắn vào lịch (FR-039).
+`status` không bao giờ đọc từ file: mỗi lần tải, lõi tính lại. File có trường `status` → trường lạ → lỗi (FR-047).
+Chỉ skill `ready` được gắn vào lịch (FR-039); scheduler tính lại ngay trước khi chạy (FR-041).
 
 **Ghi đồng thời** (FR-013): mọi thao tác ghi `skill.yaml` đi qua `store::update_skill(name, |skill| ...)` — giữ khoá
-theo skill, đọc lại file mới nhất, áp đúng thay đổi của mình, ghi nguyên tử. Gắn nhãn nền: với mỗi bước, chỉ đặt
+**liên tiến trình** theo skill (named mutex `Local\teach-skill-<name>`; GUI 002 và CLI có thể chạy cùng lúc), đọc
+lại file mới nhất, áp đúng thay đổi của mình, ghi nguyên tử. Skill không còn tồn tại → `not_found`, không tạo lại
+(gắn nhãn nền gặp lỗi này thì dừng). Bản chỉnh sửa của người dùng (`save_skill`) mang `revision` = FNV-1a của nội
+dung file lúc `get_skill`; khác `revision` hiện tại → `conflict`, không ghi. Gắn nhãn nền: với mỗi bước, chỉ đặt
 `intent` khi bước cùng `id` còn tồn tại và `intent` hiện tại vẫn bằng nhãn tất định đã sinh lúc biên dịch;
 ngược lại bỏ qua bước đó. Gắn nhãn nền không đổi `status`. Skill về `draft` thì các lịch của nó bị tạm ngưng (không
 kích hoạt) kèm lý do (giao diện 002 hiển thị); chuyển lại `ready` thì lịch tự hoạt động lại.
@@ -97,14 +107,15 @@ Mọi `{{name}}` trong `text`/`expect` của bước MUST trỏ tới một Inpu
 | intent | chuỗi | một dòng, ≤ 120 ký tự |
 | action | enum | `click` \| `type` \| `hotkey` \| `scroll` \| `wait` \| `launch` |
 | window | WindowMatch | bắt buộc trừ `wait` |
-| target | danh sách Selector | bắt buộc với `click`, `type`, `scroll`; thứ tự = thứ tự ưu tiên |
+| target | danh sách Selector | bắt buộc với `click`, `type`, `scroll`; không có với `hotkey`, `wait`, `launch`; thứ tự trong file = thứ tự ưu tiên của selector gốc |
 | text | chuỗi | chỉ với `type`; có thể chứa `{{input}}` và `{{secret:key}}` |
 | keys | chuỗi | chỉ với `hotkey`, ví dụ `Ctrl+S` |
 | scroll | {dx, dy} | chỉ với `scroll` |
 | wait_ms | số | chỉ với `wait`, ≤ 60 000 |
 | launch | {path, args} | chỉ với `launch` |
-| expect | danh sách Condition | tất cả phải đúng; rỗng = chỉ cần hành động không lỗi, và bước bị cấm nấc 2/4 + tự vá (FR-020) |
+| expect | danh sách Condition | tất cả phải đúng; rỗng = bước chỉ kết thúc được ở `executed_unverified`/`confirmed_by_user`, bị cấm nấc 2/4 + tự vá (FR-020) |
 | approval | bool | mặc định false |
+| repeat_safe | bool | mặc định false; chỉ với `click`, `hotkey`, `type`; người dùng tự bật khi lặp lại bước không gây hậu quả (FR-028); compiler/tự vá không bao giờ bật; vô hiệu khi `approval: true` |
 | skip_if | Condition \| null | |
 | warnings | danh sách chuỗi | `coordinates_only` (FR-008), `text_not_recorded` (không xác định được ô có phải mật khẩu, research R-4), `unverifiable` (`expect` rỗng — FR-020: không sửa chữa bằng model, không tự vá), `clipboard_external` (bước dán không có bước sao chép/cắt trước đó — FR-002), `suggest_approval` (gợi ý bật `approval` — FR-021); tính lại mỗi lần lưu skill, chỉ để hiển thị |
 
@@ -115,11 +126,23 @@ Mọi `{{name}}` trong `text`/`expect` của bước MUST trỏ tới một Inpu
 | theo mã | `automation_id` (+ tuỳ chọn `role`) |
 | theo vai trò + tên | `role`, `name` |
 | theo chữ nhận dạng | `ocr_text` |
-| theo vị trí | `xy_in_window: [fx, fy]`, 0 ≤ fx, fy ≤ 1 |
+| theo vị trí | `xy_in_window: [fx, fy]`, 0 ≤ fx, fy ≤ 1; tuỳ chọn `at: {role, name?}` — vai trò/tên phần tử lúc ghi; có `at` thì chỉ khớp khi phần tử tại điểm có cùng `role` và (nếu có) cùng `name` sau chuẩn hoá bỏ dấu, không phân biệt hoa thường; không có `at` (lúc ghi không có thông tin phần tử) thì khớp theo vị trí |
 
-Siêu dữ liệu: `added_by_run: <run_id>` và `pending_review: true` khi selector do tự vá thêm vào
-(FR-027). Danh sách "đã tự vá" cuối lần chạy = các selector có `pending_review: true`. Người dùng bấm
-"Giữ" → bỏ `pending_review`; bấm "Hoàn tác" → xoá selector đó. Cả hai không đổi `status`.
+Siêu dữ liệu tự vá (FR-027): selector do tự vá thêm có `patch: {id, run, pending_review}` — `id` dạng
+`p-<run_id>-<step>` duy nhất trong skill, không đổi khi danh sách selector đổi. Danh sách "đã tự vá" = selector có
+`patch.pending_review: true`. "Giữ" (theo `id`) → `pending_review: false`; "Hoàn tác" (theo `id`) → xoá selector
+đó; `id` không còn → `not_found`. Selector có `patch` nằm ngoài dấu vân tay thực thi nên không đổi `status`.
+
+**Thứ tự thử selector lúc chạy** (FR-009, FR-027): selector gốc không phải `xy_in_window` theo thứ tự trong file →
+selector có `patch` (cũ trước) → `xy_in_window`. Selector có `patch` chỉ được thử khi bước có thể kết thúc ở
+`verified` (lần kiểm `expect` thứ nhất — sau nấc 0, trước nấc 1 — có ít nhất một điều kiện sai hoặc chưa biết; điều kiện cần phần tử đích khi chưa xác định đích là "chưa biết"); ngược lại bỏ qua.
+
+**Kết quả bước** (FR-020, ghi trong `run.jsonl`): `verified` | `executed_unverified` | `confirmed_by_user` |
+`skipped` (`skip_if` thoả). **Lần gửi** (FR-028, FR-049): ngay trước khi gửi, kiểm cửa sổ focus và phần tử
+sẽ trúng (toạ độ → phần tử tại điểm là đích hoặc con của đích; gõ phím → phần tử focus là đích); không khớp →
+`dispatch: not_sent` (kèm lý do `focus_mismatch` | `occluded` | `wrong_focus`; với `Invoke`/`SetValue`: cửa sổ đích đang có hộp thoại modal của chính nó → `occluded`), ngược lại `sent`. Được "thử lại" khi
+`not_sent`, hoặc `action ∈ {scroll, wait}`, hoặc `type` qua `set_value`, hoặc `repeat_safe: true` (không có
+`approval`).
 
 **WindowMatch**: `process` (tên exe, so khớp không phân biệt hoa thường), `title_contains` (tuỳ chọn),
 `process_path` (tuỳ chọn, dùng để mở ứng dụng nếu chưa chạy ở nấc 0).
@@ -145,6 +168,7 @@ này; nếu không, gọi `CredWriteW` trực tiếp trong `secrets.rs`.
 | id | chuỗi | xem bố cục |
 | skill | chuỗi | tên skill |
 | trigger | enum | `manual` \| `schedule:<schedule_id>` \| `trial` |
+| skill_fingerprint | chuỗi | `exec_fingerprint()` lúc bắt đầu; `confirm_trial` chỉ nhận khi bằng giá trị hiện tại |
 | inputs | map tên → giá trị | giá trị tham số; bí mật không bao giờ có mặt |
 | status | enum | xem dưới |
 | budget | {max_minutes, max_model_calls, max_repairs_per_step} | chụp từ cài đặt lúc bắt đầu |
@@ -162,7 +186,7 @@ running → succeeded | failed(reason) | cancelled(reason)        reason ∈ {us
 ```
 
 `failed.reason` ∈ {`time_budget`, `model_budget`, `approval_timeout`, `stuck_timeout`,
-`rejected`, `launch_failed`, `no_responder`, `disk_full`, `input_guard_lost`} (`no_responder`: yêu cầu người dùng không thể được trả lời — FR-050). Lần chạy `trial` thành công mở hộp "Xác nhận skill này chạy đúng?".
+`rejected`, `launch_failed`, `no_responder`, `disk_full`, `input_guard_lost`} (`no_responder`: yêu cầu người dùng không thể được trả lời — FR-050). Lần chạy `trial` thành công mở hộp "Xác nhận skill này chạy đúng?"; hộp hiển thị số bước theo từng kết quả (`verified` / `executed_unverified` / `confirmed_by_user`) để người dùng biết bao nhiêu bước không được máy kiểm chứng.
 
 **Giữ log** (FR-026): sau mỗi lần chạy kết thúc, giữ `keep_runs_per_skill` (mặc định 50) thư mục mới
 nhất trong `runs\<skill>\`, xoá phần còn lại; không đụng run đang `running`/`paused`.
@@ -195,7 +219,11 @@ due ──(máy khoá)──► waiting_unlock ──(mở khoá)──┐
 ```
 
 Bất biến: không có đường nào từ `due` tới `running` mà không qua lựa chọn "Chạy ngay" của người dùng
-(FR-041). Khi đang có một lần chạy, lần kích hoạt mới ở `queued` và CHƯA hỏi; chỉ chuyển `asking` sau khi lần
+(FR-041). **Một chủ sở hữu vòng lịch** mỗi phiên: tiến trình giữ named mutex `Local\teach-scheduler` mới chạy tick
+và phát `schedule_ask`; tiến trình khác (GUI 002 hoặc `teach schedule watch` đến sau) báo "vòng lịch đang chạy ở
+tiến trình khác" và không tick. Mỗi `(schedule, due)` có tối đa một prompt mở và tối đa một `run_started`, kiểm tra
+bằng `schedule_history.jsonl` dưới cùng mutex (kể cả sau khi khởi động lại: đã có `run_started`/`skipped`/`missed`
+cho `(schedule, due)` → không hỏi lại). `run_now` cho prompt đã đóng (hết hạn, bị thay thế) → `invalid`, không chạy. Khi đang có một lần chạy, lần kích hoạt mới ở `queued` và CHƯA hỏi; chỉ chuyển `asking` sau khi lần
 chạy hiện tại kết thúc. Lần kích hoạt mới của cùng lịch đến khi lần cũ chưa xong: nếu lần cũ ở
 `asking`/`queued`/`postponed`/`waiting_unlock` → lần cũ được ghi `missed` và thay bằng lần mới (không chồng hộp
 hỏi); nếu lần cũ đang `running` → lần mới `queued`.
@@ -228,14 +256,21 @@ qua; không tạo hai Occurrence cho cùng `(schedule, due)` (FR-043).
 |---|---|
 | id | chuỗi |
 | kind | `pick_element` \| `diagnose` \| `label_step` |
+| (nguồn) | bộ mặc định nhúng trong binary hoặc file người dùng thêm — chỉ bộ mặc định được dùng cho phát hành |
 | input | đúng nội dung phần "user" sẽ gửi model (contracts/model-protocol.md) |
 | expected | câu trả lời đúng, ví dụ `{"choice": 3}`; với `label_step` là quy tắc chấm `{"language": "vi", "must_contain": ["File name:"], "must_not_contain": ["BaoCao-2026"]}` (luôn kèm: phân tích được, một dòng, 1–120 ký tự) |
 
 Bộ mặc định nhúng trong binary; người dùng/nhóm phát triển có thể thêm file `eval\*.jsonl` trong thư mục
 dữ liệu. Kết quả: tỉ lệ đúng theo từng `kind` và tổng (SC-004 ≥ 90%).
 
-**Kết quả có dấu vân tay** (`eval\results\<thời điểm>.json` trong thư mục dữ liệu; bản dùng cho phát hành sao vào
-`crates/teach-core/assets/eval/last_result.json`): `{fingerprint, model_name, prompt_version, scores: {pick_element,
-diagnose, label_step, total}, cases, at}`. `fingerprint` = FNV-1a 64-bit (tự viết, không thêm crate) trên nội dung
-`assets/prompts/*`, `src/model/prompt.rs` (dựng câu hỏi, cắt ứng viên cho đủ ≤ 2.000, `PROMPT_VERSION`), `src/model/parse.rs` và `src/runner/candidates.rs` (chuẩn hoá xuống dòng LF) — đúng ba thứ Constitution VI nêu: prompt (gồm cách dựng câu hỏi), bộ phân tích câu trả lời, bộ lọc ứng viên; sửa phần khác (HTTP, timeout, so khớp selector nấc 1) không đổi dấu vân tay. Kết quả chỉ chứa tên
-model, điểm và id ca — không chứa câu hỏi, câu trả lời hay địa chỉ máy chủ.
+**Kết quả có dấu vân tay** (`eval\results\<model>-<thời điểm>.json` trong thư mục dữ liệu — tên file theo model nên
+chạy hai model không ghi đè nhau; bản dùng cho phát hành sao vào `crates/teach-core/assets/eval/last_result.json`):
+`{fingerprint, model_name, prompt_version, release_set: bool, scores: {pick_element, diagnose, label_step, total},
+cases, at}`. `release_set = true` chỉ khi lần chạy dùng đúng bộ mặc định nhúng trong binary, không có `--cases` và
+không nạp `eval\*.jsonl` của người dùng. `fingerprint` = FNV-1a 64-bit (tự viết, không thêm crate) trên nội dung
+(chuẩn hoá xuống dòng LF) của: `assets/prompts/*`, `src/model/prompt.rs` (dựng câu hỏi, cắt ứng viên cho đủ ≤
+2.000, `PROMPT_VERSION`), `src/model/parse.rs`, `src/model/redact.rs` (bộ lọc dữ liệu gửi model, FR-033),
+`src/runner/candidates.rs`, `assets/eval/default.jsonl` (bộ câu hỏi mẫu) và `src/eval.rs` (trình chấm) — prompt,
+bộ phân tích, bộ lọc ứng viên (Constitution VI) cộng bộ lọc dữ liệu, bộ câu hỏi và trình chấm; sửa phần khác (HTTP,
+timeout, so khớp selector nấc 1) không đổi dấu vân tay. Kết quả chỉ chứa tên model, điểm và id ca — không chứa câu
+hỏi, câu trả lời hay địa chỉ máy chủ.

@@ -1,7 +1,9 @@
 # Contract: `skill.yaml`
 
 Định dạng skill người dùng đọc/sửa được. Ứng dụng là bên duy nhất ghi file này; người dùng sửa qua giao diện
-002 hoặc bề mặt điều khiển (`save_skill`), nhưng file vẫn phải hợp lệ khi sửa tay. Ngữ nghĩa trường: [data-model.md](../data-model.md#skill).
+002 hoặc bề mặt điều khiển (`save_skill`), nhưng file vẫn phải hợp lệ khi sửa tay. File là **đầu vào không tin
+cậy** (FR-047): không có trường `status` — trạng thái được tính lại mỗi lần tải từ `confirmed.fingerprint` và dấu
+vân tay thực thi hiện tại (FR-017). Ngữ nghĩa trường: [data-model.md](../data-model.md#skill).
 
 ## Ví dụ đầy đủ
 
@@ -9,9 +11,8 @@
 version: 1
 name: xuat-bao-cao-tuan
 description: Xuất báo cáo doanh thu tuần ra PDF
-status: ready
 source_trace: 20261122-091500
-last_confirmed_run: 20261122-093012
+confirmed: {run: 20261122-093012, fingerprint: "9f2c41d07ab35e18"}   # ready nếu trùng dấu vân tay hiện tại
 inputs:
   - {name: tuan, description: "Tuần cần xuất", example: "2026-W47"}
 steps:
@@ -29,10 +30,12 @@ steps:
       - {automation_id: FileSave}
       - {role: Button, name: Lưu}
       - {ocr_text: Lưu}
-      - {xy_in_window: [0.42, 0.41]}
-      - {role: Button, name: "Lưu lại", added_by_run: 20261129-080102, pending_review: true}
+      - {xy_in_window: [0.42, 0.41], at: {role: Button, name: Lưu}}   # chỉ khớp khi phần tử tại điểm là Button "Lưu"
+      - {role: Button, name: "Lưu lại", patch: {id: p-20261129-080102-3, run: 20261129-080102, pending_review: true}}
+      # lúc chạy, selector có `patch` được thử TRƯỚC xy_in_window (data-model §Thứ tự thử selector)
     expect: [{window_title_contains: "Save As"}]
     approval: false
+    repeat_safe: true          # người dùng bật: bấm lại nút mở hộp thoại Lưu không gây hậu quả (FR-028)
     skip_if: {element_exists: {role: Text, name: "Đã lưu"}}
   - id: 4
     intent: Nhập tên file
@@ -57,7 +60,12 @@ steps:
 2. Mỗi bước có đúng các trường bắt buộc theo `action` (bảng Step trong data-model). Trường không thuộc
    `action` đó → lỗi.
 3. Mỗi selector có đúng một dạng chính (`automation_id` | `role`+`name` | `ocr_text` | `xy_in_window`).
-   `xy_in_window` chỉ được nằm ở vị trí cuối danh sách selector "gốc" hoặc sau đó là các selector tự vá.
+   `at` chỉ đi kèm `xy_in_window` (là điều kiện chặn, không phải dạng chính thứ hai). Selector gốc (không có `patch`) đứng trước mọi selector có `patch`; `xy_in_window` chỉ được là selector gốc
+   cuối cùng và không bao giờ có `patch`. `patch.id` duy nhất trong skill. Thứ tự **thử** lúc chạy khác thứ tự
+   trong file: selector có `patch` được thử trước `xy_in_window` (data-model).
+7. Không có trường `status`, `last_confirmed_run` (bản cũ) → trường lạ → lỗi.
+8. `repeat_safe` chỉ được có ở bước `click`, `hotkey`, `type`; `repeat_safe: true` cùng `approval: true` → lỗi
+   (phê duyệt luôn thắng, FR-028).
 4. `{{x}}` phải khớp một Input; `{{secret:k}}` chỉ được xuất hiện trong `text`, `k` theo `[a-z0-9_]+`.
 5. `expect`, `skip_if` không chứa `{{secret:...}}` và không dùng `xy_in_window`.
 6. Không có mẫu escape cho `{{` trong v1: chuỗi chứa `{{` không khớp quy tắc 4 → lỗi.

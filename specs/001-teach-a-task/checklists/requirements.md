@@ -31,6 +31,6 @@
 
 ## Notes
 
-- Lựa chọn công nghệ (Rust, egui, terminator, enigo, xcap, OCR Windows, cron…) được tách khỏi spec, giữ nguyên văn trong `draft-v0.3.md` để dùng ở `/speckit-plan`.
+- Lựa chọn công nghệ (Rust, egui, terminator, enigo, xcap, OCR Windows, cron…) được tách khỏi spec, chuyển sang `plan.md`/`research.md` (bản nháp gốc v0.3 xem trong lịch sử git).
 - Ràng buộc nền tảng (Windows 10/11, kho bí mật của hệ điều hành, giao thức chat completions tương thích OpenAI) được giữ vì là phạm vi/phụ thuộc người dùng đã chốt, không phải lựa chọn triển khai.
 - Các giá trị mặc định tự chọn (ngưỡng "đang dùng máy" 3 phút, thời hạn chờ lịch 2 giờ, chờ phê duyệt 30 phút, ngân sách lần chạy 30 phút / 20 lần gọi model, timeout gọi model 30 giây, skill "sẵn sàng" bị sửa thì về "nháp", log giữ vô thời hạn) ghi ở mục Assumptions; nên xác nhận ở `/speckit-clarify` nếu muốn khác.

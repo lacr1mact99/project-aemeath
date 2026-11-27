@@ -1,6 +1,6 @@
 # Contract: giao tiếp với model
 
-Toàn bộ nằm sau **một mô-đun duy nhất** (`src/model/`: `mod.rs` HTTP + vòng hỏi lại + bộ lọc dữ liệu, `prompt.rs` dựng câu hỏi + cắt ứng viên ≤ 2.000 + `PROMPT_VERSION`, `parse.rs` bộ phân tích câu trả lời; Constitution §Ràng buộc). Danh sách ứng viên dựng ở `src/runner/candidates.rs`. Áp dụng FR-028…FR-034.
+Toàn bộ nằm sau **một mô-đun duy nhất** (`src/model/`: `mod.rs` HTTP + vòng hỏi lại, `redact.rs` bộ lọc dữ liệu (FR-033), `prompt.rs` dựng câu hỏi + cắt ứng viên ≤ 2.000 + `PROMPT_VERSION`, `parse.rs` bộ phân tích câu trả lời; Constitution §Ràng buộc). Danh sách ứng viên dựng ở `src/runner/candidates.rs`. Áp dụng FR-028…FR-034.
 
 ## Giao thức HTTP
 
@@ -31,8 +31,11 @@ Content-Type: application/json
 1. Xoá mọi khối `<think>…</think>` (và `<thinking>…</thinking>`).
 2. Tìm đối tượng JSON cân bằng ngoặc đầu tiên (bỏ qua ngoặc trong chuỗi), parse.
 3. Kiểm tra theo bảng "giá trị cho phép" của từng loại.
-4. Sai ở bước 2 hoặc 3 → gửi lại **một lần** đúng hội thoại cũ + câu trả lời sai (role assistant) + user:
-   `Invalid answer: <lý do>. Reply with exactly one line of JSON, for example <ví dụ hợp lệ>.`
+4. Sai ở bước 2 hoặc 3 → gửi lại **một lần**: đúng hội thoại cũ (đã lọc) + user:
+   `Invalid answer (<mã lỗi>). Reply with exactly one line of JSON, for example <ví dụ cố định của loại câu hỏi>.`
+   **Không** gửi lại câu trả lời sai của model (role assistant) — nó có thể chứa văn bản chưa lọc và làm phình
+   request. `<mã lỗi>` ∈ `no_json` · `bad_json` · `out_of_range` · `not_allowed` · `too_long` (cố định, không chứa
+   nội dung câu trả lời). Request hỏi lại đi qua cùng bộ lọc và giới hạn 2.000 như request đầu (FR-033).
 5. Vẫn sai → kết quả là `none` (pick_element), `ask_user` (diagnose), hoặc nhãn tất định (label_step).
 
 Mỗi lần gửi (kể cả gửi lại) trong lần chạy tính 1 vào `model_calls` của lần chạy đó. Lời gọi ngoài lần chạy (`label_step`, `eval`, `probe-model`, `test_connection`) không tính vào `model_calls` của lần chạy nào; log của chúng: xem storage-files.md §Log lời gọi model ngoài lần chạy.
@@ -44,15 +47,16 @@ thái (`enabled`, `focused`, `selected`, `checked`) của phần tử, tên ô �
 **Không bao giờ**: ảnh, giá trị bí mật, nội dung bộ nhớ tạm, văn bản đã/sẽ gõ, giá trị tham số, giá trị
 (Value) của ô nhập. Bộ lọc nằm trong hàm dựng đầu vào; test tự động kiểm tra (SC-009).
 
-**Che chuỗi trùng (FR-033)**: trước khi gửi, mọi đoạn trong phần user (tiêu đề cửa sổ, tên phần tử, ý định)
+**Che chuỗi trùng (FR-033)** — `redact.rs`, áp cho **mọi** request (pick_element, diagnose, label_step, hỏi lại,
+eval, probe-model) và cho **câu trả lời** trước khi ghi log/phát sự kiện: trước khi gửi, mọi đoạn trong phần user (tiêu đề cửa sổ, tên phần tử, ý định)
 trùng — không phân biệt hoa thường — với văn bản đã gõ, giá trị tham số, hoặc giá trị bí mật của lần chạy/bản
 ghi đều được thay bằng `‹đã ẩn›`. Chuỗi rỗng hoặc ngắn hơn 3 ký tự không đưa vào danh sách che (tránh che mất
 mọi chữ "a" — miễn trừ có chủ đích); giá trị bí mật thì luôn che bất kể độ dài. SC-009 chỉ tính chuỗi ≥ 3 ký tự và mọi giá trị bí mật.
 
 **Giới hạn kích thước (FR-030)**: tổng độ dài toàn bộ `messages` gửi đi (system prompt + ví dụ mẫu + câu hỏi) tính bằng số ký tự ÷ 4 MUST ≤ 2.000. Vượt thì bỏ ứng viên từ cuối danh sách (độ giống thấp nhất) tới khi đạt; không còn ứng viên nào → kết quả `ask_user` (diagnose) / `none` (pick_element), không gửi.
 
-**Không gọi model** (cả `pick_element` lẫn `diagnose`) ở bước có `expect` rỗng (FR-020) và bước có
-`{{secret:k}}` (FR-016) — chuyển thẳng `stuck`.
+**Không gọi model** (cả `pick_element` lẫn `diagnose`) ở bước không thể kết thúc ở `verified` — `expect` rỗng hoặc
+mọi điều kiện đã đúng ở lần kiểm `expect` thứ nhất (`pre_expect.before_rung1`, FR-018/FR-020) — và bước có `{{secret:k}}` (FR-016): chuyển thẳng `stuck`.
 
 ## 1. `pick_element` (nấc 2)
 
@@ -73,8 +77,9 @@ Answer with one line of JSON: {"choice": <number>} or {"choice": "none"}
 - Ứng viên: tối đa 40, lấy từ cửa sổ đích, lọc theo vai trò tương thích với hành động rồi xếp theo độ
   giống tên với target đã ghi; đánh số từ 1.
 - Giá trị cho phép: `{"choice": n}` với 1 ≤ n ≤ số ứng viên, hoặc `{"choice": "none"}`.
-- Kết quả được thao tác rồi kiểm tra `expect`; đạt → tự vá (thêm selector `role`+`name` hoặc
-  `automation_id` của phần tử đã chọn, `pending_review: true`).
+- Bước có `approval: true`: phần tử được chọn được hiển thị trong prompt `approval` trước khi gửi (FR-021).
+- Kết quả được thao tác rồi kiểm tra `expect`; bước kết thúc `verified` → tự vá (thêm selector `role`+`name` hoặc
+  `automation_id` của phần tử đã chọn, kèm `patch: {id, run, pending_review: true}`).
 
 ## 2. `diagnose` (nấc 4)
 
@@ -93,9 +98,15 @@ Answer with one line of JSON: {"action":"wait"} | {"action":"retry"} | {"action"
 
 - Giá trị cho phép: `wait` (chờ thêm 2 s rồi kiểm tra lại `expect`), `retry` (thực hiện lại hành động),
   `dismiss` với `choice` trỏ tới phần tử vai trò `Button` trong danh sách, `ask_user`.
-- `dismiss` chỉ được bấm phần tử nằm trong danh sách NEW ELEMENTS (FR-029) và có nhãn (không phân biệt hoa thường, sau khi bỏ dấu) thuộc danh sách cố định: Cancel, Close, OK, Đóng, Huỷ, Hủy. `dismiss` trỏ nút khác (ví dụ "Don't Save" trong ví dụ trên) → xử lý như `ask_user`, không bấm.
-- Bước có `approval: true`: `retry` được đổi thành `ask_user` trước khi thực hiện (FR-028); log ghi cả câu trả
-  gốc lẫn quyết định sau khi đổi. Không gọi `diagnose` ở bước có `expect` rỗng (FR-020).
+- `dismiss` chỉ được bấm phần tử nằm trong danh sách NEW ELEMENTS (FR-029) và có nhãn (không phân biệt hoa thường, sau khi bỏ dấu) thuộc danh sách cố định: Cancel, Close, Đóng, Huỷ, Hủy — **không** có `OK`. `dismiss` trỏ nút khác (ví dụ "OK", "Don't Save" trong ví dụ trên) → xử lý như `ask_user`, không bấm.
+- Sau `wait` hoặc `dismiss`: kiểm lại `expect` trước; đạt → bước xong (`verified` nếu điều kiện sai trước lần gửi
+  đầu); không đạt → xét `retry` theo quy tắc dưới, hết cách thì `stuck`.
+- `retry` chỉ được thực hiện khi lần gửi trước là `not_sent` (kể cả bị chặn vì điểm bấm bị che — FR-049), hoặc
+  `action ∈ {scroll, wait}`, hoặc `type` qua `set_value`, hoặc bước có `repeat_safe: true` (FR-028). Ngược lại
+  (`click`, `hotkey`, `launch`, `type` bằng gõ phím đã `sent`, không có `repeat_safe`) và ở mọi bước
+  `approval: true`: `retry` được đổi thành `ask_user` trước khi thực hiện; log ghi cả câu trả gốc lẫn quyết định sau
+  khi đổi (lý do `retry_unsafe` / `approval_retry_blocked`). Không gọi `diagnose` ở bước không thể kết thúc ở
+  `verified` (FR-020).
 
 ## 3. `label_step` (lúc biên dịch)
 

@@ -32,10 +32,10 @@ Windows của công ty có thể khác.
 
 | # | Máy |
 |---|---|
-| 0.1, 0.4, 0.5, 0.7, 0.8 | Dev (đo lại trên Cty) |
-| 0.2, 0.3 | Dev + Cty (bộ gõ, trình duyệt, app nội bộ của công ty) |
-| 0.6 | **Cty** (gói OCR phụ thuộc ảnh Windows/chính sách của công ty) |
-| 0.10 | **Cty** (mạng, proxy, CA, máy chủ model nội bộ) |
+| 0.1, 0.4, 0.5, 0.7, 0.8, 0.13, 0.14 | Dev (đo lại trên Cty) |
+| 0.2, 0.3, 0.11 | Dev + Cty (bộ gõ, trình duyệt, app nội bộ, chính sách khoá máy/RDP của công ty) |
+| 0.6a, 0.6b | **Cty** (gói OCR và kiểu phân phối phụ thuộc ảnh Windows/chính sách của công ty) |
+| 0.10, 0.12 | **Cty** (mạng, proxy, CA, máy chủ model nội bộ) |
 
 | # | Kiểm tra | Đạt khi |
 |---|---|---|
@@ -44,19 +44,42 @@ Windows của công ty có thể khác.
 | 0.3 | Gõ vào ô mật khẩu (trang đăng nhập trình duyệt, hộp thoại Win32, app Electron) | không ký tự nào trong events.jsonl; ảnh bị che; ghi lại app nào `is_password` không xác định |
 | 0.4 | SendInput Unicode "Ươ ạ ẫ ỹ" vào Notepad, Word, Electron, trình duyệt (bộ gõ Việt bật và tắt) | văn bản trong ô khớp chính xác |
 | 0.5 | Chạm chuột trong lúc app đang SendInput | được nhận là "người dùng" (không có `TEACH_MAGIC`), kể cả khi bộ gõ Việt bật |
-| 0.6 | `Get-WindowsCapability -Online \| ? Name -like 'Language.OCR*'`; OCR 10 nút nhãn tiếng Việt | selector `ocr_text` (so khớp bỏ dấu) tìm đúng ≥ 9/10 nút (R-5) |
+| 0.6a | Gọi `OcrEngine` từ `teach.exe` **unpackaged** và từ kiểu phân phối plan 002 dự kiến (plan D-3) | OCR trả kết quả trong đúng kiểu phân phối; trượt → ghi phương án đã chọn (sparse package / Tesseract / bỏ `ocr_text` khỏi MVP) |
+| 0.6b | `Get-WindowsCapability -Online \| ? Name -like 'Language.OCR*'`; OCR 10 nút nhãn tiếng Việt (chỉ đo khi 0.6a đạt hoặc với phương án thay thế) | selector `ocr_text` (so khớp bỏ dấu) tìm đúng ≥ 9/10 nút (R-5) |
 | 0.7 | Chụp cửa sổ trên màn hình 150% và hai màn hình khác DPI | ảnh đúng khung cửa sổ; `xy_in_window` bấm đúng điểm |
 | 0.8 | Phím tắt dừng khẩn cấp và tạm dừng/dừng ghi qua hook khi cửa sổ khác đang focus (kể cả ứng dụng toàn màn hình) | nhận được 20/20 lần; tổ hợp không lọt vào ứng dụng đích |
 | 0.10 | `cargo run --example spike_probe` (T012) với DeepSeek, rồi với GLM — từ M3 dùng `teach probe-model` (T068) | in ra: tương thích OpenAI?, `json_schema`?, phần suy nghĩ ở đâu, p50/p95 độ trễ, giới hạn ngữ cảnh; **≥ 19/20** câu JSON một dòng hợp lệ (mã thoát 0) |
+| 0.11 | `spike_session` (T090): khoá/mở khoá máy, UAC, ngắt/nối lại RDP, thu nhỏ cửa sổ RDP ở máy khách — mỗi ca 5 lần, cả lúc ghi và lúc chạy | 100% ca khoá/UAC/RDP ngắt được phát hiện và tạm dừng trước thao tác kế tiếp; ca RDP thu nhỏ ghi lại hành vi (giới hạn đã biết) |
+| 0.12 | Prompt Anh và Việt trên bộ câu hỏi mẫu, cả hai model (R-7) | ghi điểm 4 tổ hợp; chọn tiếng Việt chỉ khi cao hơn ≥ 5 điểm % |
+| 0.13 | `spike_stop` (T088) trên `bench_target` treo theo lệnh: đọc UIA treo, `Invoke` treo, `SetValue` treo, SendInput liên tục (plan D-1) — mỗi ca 5 lần | 20/20 không lần gửi mới nào qua `Gate` sau ≤ 1 s; ghi có/không tác dụng muộn và độ trễ; chốt dùng `Invoke`/`SetValue` hay SendInput mặc định |
+| 0.14 | `spike_hookloss` (T089): ép mất hook khi máy rảnh, input liên tục, đổi focus giữa lúc gõ, 20 lần bấm/giây; đo `lag_ms` của recorder với UIA chậm (plan D-2) | ghi thời gian phát hiện/cài lại; `RegisterHotKey` dừng được 20/20 trong lúc hook mất; chốt `RECORD_LAG_LIMIT_MS` |
+
+## Bảng dừng khẩn cấp
+
+Một bảng duy nhất cho SC-003; plan, tasks và các checkpoint tham chiếu bảng này. Mỗi lần thử đạt khi: không lần gửi
+mới nào qua `Gate` sau ≤ 1 s kể từ lúc nhấn **và** `cancelled(emergency_stop)` ≤ 2 s. Mốc đạt: 100% số lần thử.
+
+| Mốc | Tình huống | Số lần | Cách tạo |
+|---|---|---|---|
+| M0 | 4 ca lời gọi treo của `spike_stop` (0.13) | 20 | `bench_target` treo theo lệnh |
+| M2 | skill dài, ứng dụng phản hồi bình thường | 10 | `teach run` + nhấn `Ctrl+Alt+Esc` |
+| M2 | ứng dụng đích treo (đọc UIA treo) | 5 | skill trên `bench_target`, lệnh treo |
+| M2 | đang `Invoke`/`SetValue` vào ứng dụng treo | 5 | như trên |
+| M3 | đang chờ model (máy chủ giả trả chậm 30 s) | 6 | máy chủ giả `127.0.0.1` |
 
 ## M1
 
+Trạng thái đầu cố định: Notepad đang mở với tài liệu trống và đang focus; chưa có `ghichu-test.txt`.
+
 1. `teach record "Lưu ghi chú hôm nay"`.
-2. Mở Notepad, gõ `Xin chào`, `Ctrl+S`, gõ tên `ghichu-test.txt`, bấm **Save**. Nhấn phím tắt Dừng (`Ctrl+Alt+S`).
+2. Gõ `Xin chào`, `Ctrl+S`, gõ tên `ghichu-test.txt`, bấm **Save**. Nhấn phím tắt Dừng (`Ctrl+Alt+S`).
 3. Kỳ vọng: `skills\luu-ghi-chu-hom-nay\skill.yaml` hợp lệ theo [skill-format](./contracts/skill-format.md),
-   ~5 bước, mỗi bước có `intent`, ≥ 1 selector, và ≥ 1 `expect` hoặc cảnh báo `unverifiable`; trên bộ workflow
-   chuẩn ≥ 80% số bước có `expect` tự sinh; trạng thái `draft` (SC-001).
-4. Ghi lại một lần có gõ mật khẩu vào trang đăng nhập bất kỳ → `events.jsonl` không có ký tự đó; ảnh bị che.
+   đúng 4 bước `type`, `hotkey`, `type`, `click` (không có `launch`); mỗi bước có `intent`; bước `type`/`click` có
+   ≥ 1 selector; mỗi bước có ≥ 1 `expect` hoặc cảnh báo `unverifiable`; không `expect` nào đúng sẵn ở trạng thái
+   trước hành động trong bản ghi; trên bộ workflow chuẩn ≥ 80% số bước có `expect` tự sinh; trạng thái `draft`
+   (SC-001).
+4. Ghi lại một lần có gõ mật khẩu vào trang đăng nhập bất kỳ → `events.jsonl` không có ký tự đó; ảnh bị che,
+   hoặc không có ảnh khi phần tử không có toạ độ.
 5. Tắt model (để trống base URL) và lặp bước 1–3 → câu ý định dạng tất định (`Bấm "Save" (Button)`).
 6. Để ghi chạy quá 10 phút → tự dừng, skill vẫn được sinh.
 
@@ -66,45 +89,70 @@ Windows của công ty có thể khác.
 teach bench bench\skills --mode 1      # model tắt, giao diện không đổi
 ```
 
-- Kỳ vọng: 10/10 skill `succeeded`, tổng `model_calls` = 0, mã thoát 0 (SC-002).
-- Dừng khẩn cấp: chạy một skill dài, nhấn `Ctrl+Alt+Esc` → thao tác cuối cùng trong log cách lúc nhấn
-  ≤ 1 s và `cancelled(emergency_stop)` ≤ 2 s; lặp 10 lần, 10/10; thêm 3 lần nhấn khi ứng dụng đích bị treo
-  (SC-003). Phần "nhấn khi đang chờ model" đo ở §M3.
+- Kỳ vọng: 10/10 skill `succeeded` **và** 10/10 `check.ps1` đạt, tổng `model_calls` = 0, mã thoát 0 (SC-002).
+- Dừng khẩn cấp: các dòng M2 của §Bảng dừng khẩn cấp (20/20).
 - Chạm chuột giữa lần chạy (`teach run`) → trạng thái `paused(user_input)`, console hỏi; chọn `continue` → chạy tiếp.
 - Bước `approval: true` → dừng tới khi chọn `approve`; `reject` → `failed(rejected)`.
 - Sửa `expect` của một bước thành điều không thể đúng → sau 2 lần sửa, `paused(stuck)` hiện ảnh và lý do.
+- Sửa `expect` của một bước thành điều đã đúng trước khi thao tác → bước ghi `executed_unverified`, không có nấc
+  2/4; bước `click` có `expect` không đạt → không có lần gửi thứ hai (`dispatch: sent` chỉ một lần); bật
+  `teach skill set <skill> <step> --repeat-safe on` rồi chạy lại → được bấm lại trong ngân sách sửa chữa.
+- Mở một hộp thoại của chính app che nút đích ngay trước bước bấm → log `dispatch: not_sent` (`occluded`), không
+  cú bấm nào lọt vào hộp thoại.
 
 ## M3
 
 ```powershell
-teach eval --publish                   # với model trong cài đặt; ghi last_result.json khi ≥ 90%
-teach bench bench\skills --mode 2      # selector chính bị làm hỏng → pick_element
-teach bench bench\skills --mode 3      # hộp thoại chèn giữa chừng → diagnose
+teach eval                                    # bộ mặc định, KHÔNG --publish; kết quả eval\results\<model>-*.json
+teach bench bench\skills --mode 2             # mọi selector gốc của bước đích bị làm hỏng → bắt buộc nấc 2
+teach bench bench\dialog-skills --mode 3      # bench_target bật hộp thoại của chính nó → bắt buộc nấc 4
 ```
 
-Chạy cả ba lệnh với DeepSeek rồi với GLM; chọn model mặc định theo kết quả. Model được chọn phải đạt:
-`eval` ≥ 90%; mode 2 ≥ 8/10; mode 3 ≥ 8/10; trong log không có bước nào thao tác sai phần tử mà `expect`
-vẫn đạt (SC-004, SC-005). Sau mode 2: các skill có selector `pending_review: true`; `teach skill patches <skill>` liệt kê,
-`--undo` xoá đúng selector đó, `status` không đổi.
+Bench luôn chạy trên **bản sao** skill trong thư mục tạm, chạy `reset.ps1` trước mỗi lần và chấm bằng `check.ps1`
+(độc lập với `expect`). Một lần chỉ được tính đạt khi `succeeded`, `check.ps1` đạt **và** log có nấc cần đo (mode 2:
+`rung: 2` ở bước bị làm hỏng; mode 3: `rung: 4`). Sau mode 2, bench chạy **lượt 2** trên bản sao đã tự vá: mọi lần
+đạt ở lượt 1 phải `succeeded` ở nấc 1 với `selector: patch:<id>`, 0 lần gọi model.
 
-Kiểm tra riêng tư (SC-009): đặt một bí mật `{{secret:demo}}` = `S3cret!xyz` và tham số `tuan` =
-`KHACH-HANG-ABC`; chạy mode 2 cho skill đó; tìm trong toàn bộ thư mục dữ liệu và trong `model_call.request`:
+Chạy `eval` + hai lệnh bench với DeepSeek rồi với GLM; chọn model mặc định. Model được chọn phải đạt: `eval` ≥ 90%;
+mode 2 ≥ 8/10; mode 3 ≥ 8/10; 0 lần `succeeded` mà `check.ps1` trượt (SC-004, SC-005). Sau đó đặt model đã chọn
+trong cài đặt và chạy `teach eval --publish` (chỉ nhận lần chạy `release_set`). Tự vá: `teach skill patches <skill>`
+liệt kê theo `patch_id`; thêm một selector gốc rồi `--undo <patch_id>` vẫn xoá đúng selector đó; `status` không đổi.
+
+Kiểm tra riêng tư (SC-009, theo từng nơi dữ liệu đi qua): đặt bí mật `{{secret:demo}}` = `S3cret!xyz` và tham số
+`tuan` = `KHACH-HANG-ABC`; chạy mode 2 cho skill đó.
 
 ```powershell
-Select-String -Path "$env:LOCALAPPDATA\teach\*" -Pattern 'S3cret!xyz' -Recurse   # 0 kết quả
-# request gửi model không chứa 'KHACH-HANG-ABC' hay văn bản đã gõ
+$d = "$env:LOCALAPPDATA\teach"
+# File văn bản (yaml/jsonl/json/tạm): 0 kết quả cho bí mật và API key
+Get-ChildItem $d -Recurse -File -Exclude *.png | Select-String -SimpleMatch 'S3cret!xyz'
+Get-ChildItem $d -Recurse -File -Exclude *.png | Select-String -SimpleMatch '<api key>'
+# Request gửi model (log): 0 kết quả cho tham số và bí mật
+Get-ChildItem "$d\runs" -Recurse -Filter run.jsonl | Select-String -SimpleMatch 'KHACH-HANG-ABC','S3cret!xyz'
+# Ảnh: không có ảnh nào của lần chạy từ bước gõ bí mật trở đi (so số dòng `step` có `shot` với số file)
 ```
 
-Dừng khẩn cấp khi đang chờ model (máy chủ giả trả chậm 30 s): 3/3 lần không có thao tác sau 1 s và
-`cancelled(emergency_stop)` ≤ 2 s; `start_run` ngay sau đó trả `busy` tới khi lời gọi cũ trả về (SC-003).
+Phần thân/header request thật và sự kiện được kiểm tự động trong `tests/privacy.rs` (máy chủ giả ghi lại toàn bộ
+request); trên máy công ty, đối chiếu `model_call.request` trong `run.jsonl` như trên.
+
+Dừng khẩn cấp khi đang chờ model: dòng M3 của §Bảng dừng khẩn cấp (6/6); `start_run` ngay sau đó trả `busy` tới
+khi lời gọi cũ trả về.
 
 Ngắt mạng → skill chế độ 1 vẫn chạy xong; skill chế độ 2 chuyển `paused(stuck)` với lý do "không kết nối
 được máy chủ model" (SC-010).
 
 ## M4
 
-→ Spec 002 (giao diện). Điều kiện từ lõi: vòng dạy → chạy thử (`teach run <skill> --trial`) → phê duyệt →
-xác nhận sẵn sàng làm trọn bằng CLI, không sửa file bằng tay ngoài bước đánh dấu tham số (SC-007 phần lõi).
+→ Spec 002 (giao diện). Điều kiện từ lõi (SC-007 phần lõi), chỉ bằng CLI, **không sửa YAML tay**:
+
+```powershell
+teach record "Lưu ghi chú hôm nay"
+teach skill param luu-ghi-chu-hom-nay 3 --from 0 --to 15 --name ten_file --example ghichu-test.txt
+teach skill set luu-ghi-chu-hom-nay 4 --approval on
+teach run luu-ghi-chu-hom-nay --trial --input ten_file=moi.txt   # approve ở console, rồi xác nhận → ready
+teach skill show luu-ghi-chu-hom-nay                              # status: ready
+teach skill set luu-ghi-chu-hom-nay 4 --approval off              # → draft (dấu vân tay đổi)
+teach skill confirm luu-ghi-chu-hom-nay <run_id cũ>               # bị từ chối: not_ready
+```
 
 ## M5
 
@@ -127,5 +175,11 @@ Kịch bản thật trên máy với khay, hộp hỏi, thông báo Windows: qui
 | Chỉnh đồng hồ lùi 1 giờ rồi tiến 3 giờ | không có hai Occurrence cùng `due`; không chạy bù hàng loạt |
 | Trả lời `run_now` khi skill vừa về `draft` | không `run_started`; lịch sử `skipped` (`skill_not_ready`) |
 | Đến giờ, máy rảnh, mở khoá | `prompt(schedule_ask)` phát ≤ 30 s sau `due` (đồng hồ giả) |
+| Hai tiến trình cùng theo dõi lịch (GUI giả + `schedule watch`) | chỉ tiến trình giữ `Local\teach-scheduler` tick; đúng 1 prompt cho mỗi `(schedule, due)`; tiến trình sau thoát mã 4 |
+| `run_now` đến sau khi prompt đã `expired`/`superseded` | `invalid`; 0 `run_started` |
+| Khởi động lại sau khi lần kích hoạt đã `run_started` | không hỏi lại `(schedule, due)` đó |
+| Lịch mỗi 5 phút, người dùng hoãn 10 phút | lần kế tiếp đến trong lúc hoãn → lần cũ `missed`, chỉ một prompt cho lần mới |
 
-Trên mọi kịch bản: 0 `run_started` khi chưa có lựa chọn `run_now` cho lần đó (SC-008).
+Trên mọi kịch bản (SC-008): 100% lần đủ điều kiện hỏi có `prompt(schedule_ask)`; 100% lần còn lại có kết quả lịch
+sử đúng; 0 `run_started` khi chưa có lựa chọn `run_now` cho lần đó; 0 `(schedule, due)` có hai prompt hoặc hai
+`run_started`.
