@@ -101,8 +101,12 @@ thể kẹt; quyết định dừng vì vậy không được nằm trên worker
 1 s. Thiết kế:
 
 - **Dừng khẩn cấp có hai đường độc lập**: hook LL **và** `RegisterHotKey` (WM_HOTKEY, không bị gỡ theo
-  `LowLevelHooksTimeout`) trên cùng cửa sổ message-only. `RegisterHotKey` thất bại (tổ hợp bị app khác giữ) → cảnh
-  báo khi khởi động, vẫn dùng hook.
+  `LowLevelHooksTimeout`) trên cửa sổ message-only ở **luồng riêng**, không chung luồng hook (M0: chung luồng thì
+  `WM_HOTKEY` kẹt theo hook). Hook LL chạy trước `RegisterHotKey`, nên khi `RegisterHotKey` thành công hook **không
+  nuốt** tổ hợp dừng khẩn cấp mà chỉ quan sát (hệ thống tự giữ phím tắt đã đăng ký khỏi ứng dụng đích); cả hai đường
+  gọi `Gate::stop()` (idempotent). `RegisterHotKey` thất bại (tổ hợp bị tiến trình khác giữ, kể cả tiến trình lõi thứ
+  hai) → cảnh báo khi khởi động, hook nuốt tổ hợp như các phím tắt khác. Đã đo (`spike_hotkeys --self-test 10`):
+  hook 10/10 + `WM_HOTKEY` 10/10 khi đăng ký được; hook 10/10 khi không đăng ký.
 - Giám sát hook: cài lại hook mỗi 1 s khi đang ghi/chạy (rẻ, không cần đoán đã mất hay chưa) **và** đối chiếu
   `GetLastInputInfo` với sự kiện cuối từ hook; lệch > 1 s khi đang chạy → coi là đã mất trong khoảng đó → tạm dừng
   run (prompt `user_input`, vì không biết người dùng có chạm không); không cài lại được → `input_guard_lost`.

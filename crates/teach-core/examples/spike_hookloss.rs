@@ -167,9 +167,8 @@ fn hook_thread(ready: mpsc::Sender<(u32, isize)>) {
             0, 0, 0, 0, Some(HWND_MESSAGE), None, Some(hinst), None,
         )
         .unwrap();
-        if let Err(e) = RegisterHotKey(Some(hwnd), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_ESCAPE.0 as u32) {
-            println!("WARNING RegisterHotKey Ctrl+Alt+Esc failed: {e}");
-        }
+        // D-2: RegisterHotKey ở luồng riêng để luồng hook kẹt không kéo đường dừng thứ hai theo.
+        thread::spawn(hotkey_thread);
         install_hooks();
         ready.send((GetCurrentThreadId(), hwnd.0 as isize)).unwrap();
         let mut m = MSG::default();
@@ -177,8 +176,33 @@ fn hook_thread(ready: mpsc::Sender<(u32, isize)>) {
             DispatchMessageW(&m);
         }
         uninstall_hooks();
-        let _ = UnregisterHotKey(Some(hwnd), 1);
         let _ = DestroyWindow(hwnd);
+    }
+}
+
+/// Cửa sổ message-only riêng cho WM_HOTKEY; sống tới khi tiến trình thoát.
+fn hotkey_thread() {
+    unsafe {
+        let hinst: HINSTANCE = GetModuleHandleW(None).unwrap().into();
+        let wc = WNDCLASSW {
+            lpfnWndProc: Some(wnd_proc),
+            hInstance: hinst,
+            lpszClassName: w!("spike_hookloss_hotkey"),
+            ..Default::default()
+        };
+        RegisterClassW(&wc);
+        let hwnd = CreateWindowExW(
+            WINDOW_EX_STYLE(0), w!("spike_hookloss_hotkey"), w!(""), WINDOW_STYLE(0),
+            0, 0, 0, 0, Some(HWND_MESSAGE), None, Some(hinst), None,
+        )
+        .unwrap();
+        if let Err(e) = RegisterHotKey(Some(hwnd), 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_ESCAPE.0 as u32) {
+            println!("WARNING RegisterHotKey Ctrl+Alt+Esc failed: {e}");
+        }
+        let mut m = MSG::default();
+        while GetMessageW(&mut m, None, 0, 0).as_bool() {
+            DispatchMessageW(&m);
+        }
     }
 }
 
